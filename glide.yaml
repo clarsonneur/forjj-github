@@ -1,4 +1,4 @@
-package: forjj-contribs/upstream/github
+package: forjj-github
 import:
 - package: github.com/forj-oss/goforjj
 - package: github.com/google/go-github
