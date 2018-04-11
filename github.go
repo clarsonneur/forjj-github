@@ -225,7 +225,7 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 	for name, team := range g.github_source.Groups {
 		if github_team, found := teams[name]; found {
 			updated := false
-			team_to_update := github.Team{Name: github_team.Name}
+			team_to_update := github.NewTeam{Name: *github_team.Name}
 			if _, valid := valid_roles[team.Role]; !valid {
 				team.Role = "pull"
 			}
@@ -254,14 +254,15 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 
 		// Team have to be created
 		log.Printf(ret.StatusAdd("Creating team '%s'.", name))
-		github_team := new(github.Team)
-		github_team.Name = &name
+		github_newteam := new(github.NewTeam)
+		github_newteam.Name = name
 		if _, valid := valid_roles[team.Role]; valid {
-			github_team.Permission = &team.Role
+			github_newteam.Permission = &team.Role
 		} else {
-			github_team.Permission = nil
+			github_newteam.Permission = nil
 		}
-		github_team, resp, err = g.Client.Organizations.CreateTeam(g.ctxt, g.github_source.Organization, github_team)
+		var github_team *github.Team
+		github_team, resp, err = g.Client.Organizations.CreateTeam(g.ctxt, g.github_source.Organization, github_newteam)
 		if err != nil && resp == nil {
 			log.Printf(ret.Errorf("Unable to create organization team '%s'. %s", name, err))
 			return
