@@ -95,11 +95,12 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 		ret.Errorf("%s", err)
 		return
 	}
+	log.Printf(ret.StatusAdd("Configuration saved in source Repo '%s'.", path.Join(req.Forj.ForjjInstanceName, github_file)))
 	if _, err := gws.save_yaml(&gws.githubDeploy, path.Join(deployPath, github_file)); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
-	log.Printf(ret.StatusAdd("Configuration saved in '%s'.", path.Join(req.Forj.ForjjInstanceName, github_file)))
+	log.Printf(ret.StatusAdd("Configuration saved in deploy Repo '%s'.", path.Join(req.Forj.ForjjDeploymentEnv, github_file)))
 
 	// Building final Post answer
 	// We assume ssh is used and forjj can push with appropriate credential.
