@@ -1,5 +1,5 @@
 hash: 89530b62641894d0f89c8e06e9581c39aee15799f099b2fa5b05256720e4236a
-updated: 2018-04-10T19:18:00.837473522Z
+updated: 2018-04-12T14:23:52.312685674Z
 imports:
 - name: github.com/alecthomas/kingpin
   version: 947dcec5ba9c011838740e680966fd7087a71d0d
@@ -16,13 +16,13 @@ imports:
   subpackages:
   - trace
 - name: github.com/forj-oss/goforjj
-  version: 22b3a83025bf214a188389229cfc97edc608cdda
+  version: afb76b4fea15c7e5340700a1bba629f0a72f6ff9
 - name: github.com/golang/protobuf
   version: e09c5db296004fbe3f74490e84dcd62c3c5ddb1b
   subpackages:
   - proto
 - name: github.com/google/go-github
-  version: 88eb4e9dc91cb2db1bbc56c936f1ee39bbe72ba5
+  version: 89a446efe88e1636068183a91ca8845683683477
   subpackages:
   - github
 - name: github.com/google/go-querystring

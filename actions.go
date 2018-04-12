@@ -11,11 +11,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/forj-oss/goforjj"
 	"log"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/forj-oss/goforjj"
 )
 
 const github_file = "github.yaml"
@@ -40,7 +41,7 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 		return
 	}
 
-	if a, found := req.Objects.App[instance] ; !found {
+	if a, found := req.Objects.App[instance]; !found {
 		ret.Errorf("Internal issue. Forjj has not given the Application information for '%s'. Aborted.")
 		return
 	} else {
@@ -74,6 +75,12 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 			ret.Errorf("Unable to create '%s'. %s", source_path, err)
 		}
 	}
+
+	deployPath := path.Join(req.Forj.ForjjDeployMount, req.Forj.ForjjDeploymentEnv)
+	if _, err := os.Stat(deployPath); err != nil {
+		ret.Errorf("Unable to create '%s'. Forjj must create it. %s", source_path, err)
+	}
+
 	if _, err := os.Stat(path.Join(source_path, github_file)); err == nil {
 		ret.Errorf("Unable to create the github configuration which already exist.\nUse 'update' to update it "+
 			"(or update %s), and 'maintain' to update your github service according to his configuration.",
@@ -84,7 +91,11 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	ret.StatusAdd("Environment checked. Ready to be created.")
 
 	// Save gws.github_source.
-	if _, err := gws.save_yaml(path.Join(source_path, github_file)); err != nil {
+	if _, err := gws.save_yaml(&gws.github_source, path.Join(source_path, github_file)); err != nil {
+		ret.Errorf("%s", err)
+		return
+	}
+	if _, err := gws.save_yaml(&gws.githubDeploy, path.Join(deployPath, github_file)); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
@@ -99,7 +110,8 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	ret.Services.Urls["api_url"] = gws.github_source.Urls["github-base-url"]
 
 	ret.CommitMessage = fmt.Sprint("Github configuration created.")
-	ret.AddFile(path.Join(req.Forj.ForjjInstanceName, github_file))
+	ret.AddFile(goforjj.FilesSource, path.Join(req.Forj.ForjjInstanceName, github_file))
+	ret.AddFile(goforjj.FilesDeploy, github_file)
 
 	return
 }
@@ -120,13 +132,13 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		return
 	} else {
 		gws = GitHubStruct{
-			source_mount:    req.Forj.ForjjSourceMount,
-			token:           a.Token,
-			app:             &a,
+			source_mount: req.Forj.ForjjSourceMount,
+			token:        a.Token,
+			app:          &a,
 		}
 	}
 
-	source_path := path.Join(gws.source_mount, instance)
+	source_path := path.Join(req.Forj.ForjjDeployMount, req.Forj.ForjjDeploymentEnv)
 
 	check := make(map[string]bool)
 	check["token"] = true
@@ -171,7 +183,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 	gws.repos_exists(ret)
 
 	// Save gws.github_source.
-	if Updated, err := gws.save_yaml(path.Join(source_path, github_file)); err != nil {
+	if Updated, err := gws.save_yaml(&gws.githubDeploy, path.Join(source_path, github_file)); err != nil {
 		ret.Errorf("%s", err)
 		return
 	} else {
@@ -184,7 +196,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 			}
 
 			ret.CommitMessage = fmt.Sprint("Github configuration updated.")
-			ret.AddFile(path.Join(instance, github_file))
+			ret.AddFile(goforjj.FilesDeploy, path.Join(instance, github_file))
 		}
 	}
 
@@ -256,12 +268,12 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 		return
 	}
 
-	if gws.github_source.NoRepos {
+	if gws.githubDeploy.NoRepos {
 		log.Printf(ret.StatusAdd("Repositories maintained limited to your infra repository"))
 	}
 	// loop on list of repos, and ensure they exist with minimal config and rights
-	for name, repo_data := range gws.github_source.Repos {
-		if !repo_data.Infra && gws.github_source.NoRepos {
+	for name, repo_data := range gws.githubDeploy.Repos {
+		if !repo_data.Infra && gws.githubDeploy.NoRepos {
 			log.Printf(ret.StatusAdd("Repo ignored: %s", name))
 		}
 		if err := repo_data.ensure_exists(&gws, ret); err != nil {

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/forj-oss/goforjj"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+
+	"github.com/forj-oss/goforjj"
+	"gopkg.in/yaml.v2"
 )
 
 func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData) error {
@@ -16,12 +17,12 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 
 	req.InitOrganization(g)
 
-	g.github_source.Repos = make(map[string]RepositoryStruct)
-	g.github_source.Users = make(map[string]string)
-	g.github_source.Groups = make(map[string]TeamStruct)
+	g.githubDeploy.Repos = make(map[string]RepositoryStruct)
+	g.githubDeploy.Users = make(map[string]string)
+	g.githubDeploy.Groups = make(map[string]TeamStruct)
 
-	g.github_source.NoRepos = (g.app.ReposDisabled == "true")
-	if g.github_source.NoRepos {
+	g.githubDeploy.NoRepos = (g.app.ReposDisabled == "true")
+	if g.githubDeploy.NoRepos {
 		log.Print("Repositories_disabled is true. forjj_github won't manage repositories except the infra repository.")
 	}
 
@@ -30,7 +31,7 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 	// Add all repos
 	for name, repo := range req.Objects.Repo {
 		is_infra := (name == g.app.ForjjInfra)
-		if g.github_source.NoRepos && ! is_infra {
+		if g.githubDeploy.NoRepos && !is_infra {
 			continue
 		}
 		if !repo.IsValid(name, ret) {
@@ -41,11 +42,10 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 		g.SetHooks(&repo, req.Objects.Webhooks)
 	}
 
+	log.Printf("forjj-github manages %d repository(ies).", len(g.githubDeploy.Repos))
 
-	log.Printf("forjj-github manages %d repository(ies).", len(g.github_source.Repos))
-
-	g.github_source.NoTeams = (g.app.TeamsDisabled == "true")
-	if g.github_source.NoTeams {
+	g.githubDeploy.NoTeams = (g.app.TeamsDisabled == "true")
+	if g.githubDeploy.NoTeams {
 		log.Print("Users_disabled is true. forjj_github won't manage Organization teams (Users/groups).")
 	} else {
 		for name, details := range req.Objects.User {
@@ -53,31 +53,31 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 		}
 	}
 
-	log.Printf("forjj-github manages %d user(s) at Organization level.", len(g.github_source.Users))
+	log.Printf("forjj-github manages %d user(s) at Organization level.", len(g.githubDeploy.Users))
 
-	if !g.github_source.NoTeams {
+	if !g.githubDeploy.NoTeams {
 		for name, details := range req.Objects.Group {
 			g.AddGroup(name, &details)
 		}
 	}
 
-	log.Printf("forjj-github manages %d group(s) at Organization level.", len(g.github_source.Groups))
+	log.Printf("forjj-github manages %d group(s) at Organization level.", len(g.githubDeploy.Groups))
 
 	return nil
 }
 
 func (g *GitHubStruct) DefineRepoUrls(name string) (upstream goforjj.PluginRepoRemoteUrl) {
 	upstream = goforjj.PluginRepoRemoteUrl{
-		Ssh: "git@" + g.Client.BaseURL.Host + ":" + g.github_source.Organization + "/" + name + ".git",
-		Url: g.github_source.Urls["github-url"] + "/" + g.github_source.Organization + "/" + name,
+		Ssh: "git@" + g.Client.BaseURL.Host + ":" + g.githubDeploy.Organization + "/" + name + ".git",
+		Url: g.github_source.Urls["github-url"] + "/" + g.githubDeploy.Organization + "/" + name,
 	}
 	return
 }
 
 // AddUser Add a new repository to be managed by github plugin.
 func (g *GitHubStruct) AddUser(name string, UserDet *UserInstanceStruct) bool {
-	if _, found := g.github_source.Users[name]; !found {
-		g.github_source.Users[name] = UserDet.Role
+	if _, found := g.githubDeploy.Users[name]; !found {
+		g.githubDeploy.Users[name] = UserDet.Role
 		return true // New added
 	}
 	return false
@@ -85,16 +85,16 @@ func (g *GitHubStruct) AddUser(name string, UserDet *UserInstanceStruct) bool {
 
 // AddGroup Add a new repository to be managed by github plugin.
 func (g *GitHubStruct) AddGroup(name string, GroupDet *GroupInstanceStruct) bool {
-	if _, found := g.github_source.Groups[name]; !found {
-		g.github_source.Groups[name] = TeamStruct{Role: GroupDet.Role, Users: GroupDet.Members}
+	if _, found := g.githubDeploy.Groups[name]; !found {
+		g.githubDeploy.Groups[name] = TeamStruct{Role: GroupDet.Role, Users: GroupDet.Members}
 		return true // New added
 	}
 	return false
 }
 
-func (g *GitHubStruct) save_yaml(file string) (Updated bool, _ error) {
+func (g *GitHubStruct) save_yaml(in interface{}, file string) (Updated bool, _ error) {
 
-	d, err := yaml.Marshal(&g.github_source)
+	d, err := yaml.Marshal(in)
 	if err != nil {
 		return false, fmt.Errorf("Unable to encode github data in yaml. %s", err)
 	}
@@ -108,7 +108,7 @@ func (g *GitHubStruct) save_yaml(file string) (Updated bool, _ error) {
 	if !Updated {
 		return
 	}
-	if err := ioutil.WriteFile(file, d, 0644); err != nil {
+	if err = ioutil.WriteFile(file, d, 0644); err != nil {
 		return false, fmt.Errorf("Unable to save '%s'. %s", file, err)
 	}
 	return

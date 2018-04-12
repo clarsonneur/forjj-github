@@ -17,9 +17,9 @@ import (
 func (req *CreateReq) InitOrganization(g *GitHubStruct) {
 	instance := req.Forj.ForjjInstanceName
 	if orga := req.Objects.App[instance].Organization; orga == "" {
-		g.github_source.Organization = req.Objects.App[instance].ForjjOrganization
+		g.githubDeploy.Organization = req.Objects.App[instance].ForjjOrganization
 	} else {
-		g.github_source.Organization = orga
+		g.githubDeploy.Organization = orga
 	}
 
 }
@@ -94,6 +94,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 		gh_url = g.github_source.Urls["github-base-url"]
 	}
 
+	g.githubDeploy.Urls = g.github_source.Urls
 	if gh_url == "" {
 		return
 	}
@@ -124,14 +125,14 @@ type GithubEntrepriseOrganization struct {
 func (g *GitHubStruct) ensure_organization_exists(ret *goforjj.PluginData) (s bool) {
 
 	s = false
-	_, resp, err := g.Client.Organizations.Get(g.ctxt, g.github_source.Organization)
+	_, resp, err := g.Client.Organizations.Get(g.ctxt, g.githubDeploy.Organization)
 	if err != nil && resp == nil {
-		log.Printf(ret.Errorf("Unable to get '%s' organization information. %s", g.github_source.Organization, err))
+		log.Printf(ret.Errorf("Unable to get '%s' organization information. %s", g.githubDeploy.Organization, err))
 		return
 	}
 	if resp.StatusCode != 200 {
 		// need to create the Organization
-		var orga GithubEntrepriseOrganization = GithubEntrepriseOrganization{g.github_source.Organization, g.github_source.OrgDisplayName, g.user}
+		var orga GithubEntrepriseOrganization = GithubEntrepriseOrganization{g.githubDeploy.Organization, g.githubDeploy.OrgDisplayName, g.user}
 		var res_orga github.Organization
 
 		if v, found := g.github_source.Urls["github-base-url"]; !found || v == "" {
@@ -141,51 +142,54 @@ func (g *GitHubStruct) ensure_organization_exists(ret *goforjj.PluginData) (s bo
 
 		req, err := g.Client.NewRequest("POST", "admin/organizations", orga)
 		if err != nil {
-			log.Printf(ret.Errorf("Unable to create '%s' as organization. Request is failing. %s", g.github_source.Organization, err))
+			log.Printf(ret.Errorf("Unable to create '%s' as organization. Request is failing. %s", g.githubDeploy.Organization, err))
 			return
 		}
 
 		_, err = g.Client.Do(g.ctxt, req, res_orga)
 		if err != nil {
-			log.Printf(ret.Errorf("Unable to create '%s' as organization. %s.\nYour credentials is probably insufficient.\nYou can update your token access rights or ask to create the organization and attach a Full control access token to the organization owner dedicated to Forjj.\nAs soon as fixed, your can restart forjj maintain", g.github_source.Organization, err))
+			log.Printf(ret.Errorf("Unable to create '%s' as organization. %s.\n" +
+				"Your credentials is probably insufficient.\n" +
+				"You can update your token access rights or ask to create the organization and attach a Full control access token to the organization owner dedicated to Forjj.\n" +
+				"As soon as fixed, your can restart forjj maintain", g.githubDeploy.Organization, err))
 			return
 		}
-		_, resp, err = g.Client.Organizations.Get(g.ctxt, g.github_source.Organization)
+		_, resp, err = g.Client.Organizations.Get(g.ctxt, g.githubDeploy.Organization)
 		if err != nil && resp == nil {
-			log.Printf(ret.Errorf("Unable to get '%s' organization information. %s", g.github_source.Organization, err))
+			log.Printf(ret.Errorf("Unable to get '%s' organization information. %s", g.githubDeploy.Organization, err))
 			return
 		}
 		if resp.StatusCode != 200 {
-			log.Printf(ret.Errorf("Unable to get '%s' created organization information. %s", g.github_source.Organization, err))
+			log.Printf(ret.Errorf("Unable to get '%s' created organization information. %s", g.githubDeploy.Organization, err))
 			return
 		}
-		log.Printf(ret.StatusAdd("'%s' organization created", g.github_source.Organization))
+		log.Printf(ret.StatusAdd("'%s' organization created", g.githubDeploy.Organization))
 	} else {
 		// Ensure the organization is writable
-		_, resp, err := g.Client.Organizations.IsMember(g.ctxt, g.github_source.Organization, g.user)
+		_, resp, err := g.Client.Organizations.IsMember(g.ctxt, g.githubDeploy.Organization, g.user)
 		if err != nil && resp == nil {
-			log.Printf(ret.Errorf("Unable to verify '%s' organization ownership. %s", g.github_source.Organization, err))
+			log.Printf(ret.Errorf("Unable to verify '%s' organization ownership. %s", g.githubDeploy.Organization, err))
 			return
 		}
 		if resp.StatusCode == 302 {
-			log.Printf(ret.Errorf("'%s' organization is not owned by '%s'. This is a Forjj requirement. Please ask the owner to add '%s' as owner of this organization.", g.github_source.Organization, g.user, g.user))
+			log.Printf(ret.Errorf("'%s' organization is not owned by '%s'. This is a Forjj requirement. Please ask the owner to add '%s' as owner of this organization.", g.githubDeploy.Organization, g.user, g.user))
 			return
 		}
-		log.Printf(ret.StatusAdd("'%s' organization access verified", g.github_source.Organization))
+		log.Printf(ret.StatusAdd("'%s' organization access verified", g.githubDeploy.Organization))
 	}
 	return true
 }
 
 // setOrganizationTeams maintain the list of teams as defined by the github.yaml file.
 func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
-	if g.github_source.NoTeams {
+	if g.githubDeploy.NoTeams {
 		log.Printf(ret.StatusAdd("Users/Groups maintain ignored."))
 		return true
 	}
 	// Load teams list already defined in github.
-	github_teams, resp, err := g.Client.Organizations.ListTeams(g.ctxt, g.github_source.Organization, nil)
+	github_teams, resp, err := g.Client.Organizations.ListTeams(g.ctxt, g.githubDeploy.Organization, nil)
 	if err != nil && resp == nil {
-		log.Printf(ret.Errorf("Unable to verify '%s' organization teams. %s", g.github_source.Organization, err))
+		log.Printf(ret.Errorf("Unable to verify '%s' organization teams. %s", g.githubDeploy.Organization, err))
 		return
 	}
 
@@ -194,7 +198,7 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 	if resp.StatusCode == 200 {
 		for _, github_team := range github_teams {
 			// TODO: Support more teams options to maintain
-			if _, found := g.github_source.Groups[*github_team.Name]; !found {
+			if _, found := g.githubDeploy.Groups[*github_team.Name]; !found {
 				// Remove team
 				if g.new_forge && ! g.force {
 					ret.Errorf("Unable to remove teams on a new Forge if you do not forcelly request it. " +
@@ -205,11 +209,11 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 				resp, err = g.Client.Organizations.DeleteTeam(g.ctxt, *github_team.ID)
 				if err != nil && resp == nil {
 					log.Printf(ret.Errorf("Unable to remove team '%s' from '%s' organization. %s",
-						*github_team.Name, g.github_source.Organization, err))
+						*github_team.Name, g.githubDeploy.Organization, err))
 					return
 				} else if resp.StatusCode != 204 {
 					log.Printf(ret.Errorf("Unable to remove team '%s' from '%s' organization. HTTP status : %s",
-						*github_team.Name, g.github_source.Organization, resp.Status))
+						*github_team.Name, g.githubDeploy.Organization, resp.Status))
 					return
 
 				}
@@ -222,7 +226,7 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 	valid_roles := map[string]string{"admin": "admin", "push": "push", "pull": "pull"}
 
 	// Loop on github.yaml group to create/update teams
-	for name, team := range g.github_source.Groups {
+	for name, team := range g.githubDeploy.Groups {
 		if github_team, found := teams[name]; found {
 			updated := false
 			team_to_update := github.NewTeam{Name: *github_team.Name}
@@ -261,8 +265,9 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 		} else {
 			github_newteam.Permission = nil
 		}
+
 		var github_team *github.Team
-		github_team, resp, err = g.Client.Organizations.CreateTeam(g.ctxt, g.github_source.Organization, github_newteam)
+		github_team, resp, err = g.Client.Organizations.CreateTeam(g.ctxt, g.githubDeploy.Organization, github_newteam)
 		if err != nil && resp == nil {
 			log.Printf(ret.Errorf("Unable to create organization team '%s'. %s", name, err))
 			return
@@ -285,7 +290,7 @@ func (g *GitHubStruct) setOrganizationTeamsMembers(ret *goforjj.PluginData, team
 	}
 	users := make(map[string]int)
 	var team_source TeamStruct
-	if t, found := g.github_source.Groups[*team.Name]; !found {
+	if t, found := g.githubDeploy.Groups[*team.Name]; !found {
 		log.Printf(ret.StatusAdd("Warning. team '%s' has no membership declared", *team.Name))
 		return false
 	} else {
@@ -337,8 +342,8 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 	c := g.Client.Repositories
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
-	for name, repo_data := range g.github_source.Repos {
-		if found_repo, _, e := c.Get(g.ctxt, g.github_source.Organization, name); e == nil {
+	for name, repo_data := range g.githubDeploy.Repos {
+		if found_repo, _, e := c.Get(g.ctxt, g.githubDeploy.Organization, name); e == nil {
 			if err == nil && name == g.app.ForjjInfra { // Infra repository.
 				err = fmt.Errorf("Infra repository '%s' already exist in github server.", name)
 			}
@@ -358,7 +363,7 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 			Exist:         repo_data.exist,
 			Remotes:       repo_data.remotes,
 			BranchConnect: repo_data.branchConnect,
-			Owner:         g.github_source.Organization,
+			Owner:         g.githubDeploy.Organization,
 		}
 	}
 	return
@@ -368,12 +373,12 @@ func (g *GitHubStruct) IsNewForge(ret *goforjj.PluginData) (_ bool) {
 	c := g.Client.Repositories
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
-	for name, repo := range g.github_source.Repos {
+	for name, repo := range g.githubDeploy.Repos {
 		if ! repo.Infra {
 			continue
 		}
 		// Infra repository.
-		if _, resp, e := c.Get(g.ctxt, g.github_source.Organization, name); e != nil && resp == nil {
+		if _, resp, e := c.Get(g.ctxt, g.githubDeploy.Organization, name); e != nil && resp == nil {
 			ret.Errorf("Unable to identify the infra repository. Unknown issue: %s", e)
 			return
 		} else {
@@ -397,8 +402,8 @@ func (g *GitHubStruct) req_repos_exists(req *UpdateReq, ret *goforjj.PluginData)
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
 	for name, _ := range req.Objects.Repo {
-		log.Printf("Looking for Repo '%s' from '%s'", name, g.github_source.Organization)
-		found_repo, _, err := c.Get(g.ctxt, g.github_source.Organization, name)
+		log.Printf("Looking for Repo '%s' from '%s'", name, g.githubDeploy.Organization)
+		found_repo, _, err := c.Get(g.ctxt, g.githubDeploy.Organization, name)
 
 		r := goforjj.PluginRepo{
 			Name:          name,
@@ -422,7 +427,7 @@ func (g *GitHubStruct) req_repos_exists(req *UpdateReq, ret *goforjj.PluginData)
 
 func (r *RepositoryStruct) exists(gws *GitHubStruct) bool {
 	c := gws.Client.Repositories
-	_, _, err := c.Get(gws.ctxt, gws.github_source.Organization, r.Name)
+	_, _, err := c.Get(gws.ctxt, gws.githubDeploy.Organization, r.Name)
 
 	if err == nil { // repos exist
 		return true
@@ -435,7 +440,7 @@ func (r *RepositoryStruct) exists(gws *GitHubStruct) bool {
 func (r *RepositoryStruct) ensure_exists(gws *GitHubStruct, ret *goforjj.PluginData) error {
 	// test existence
 	c := gws.Client.Repositories
-	found_repo, _, err := c.Get(gws.ctxt, gws.github_source.Organization, r.Name)
+	found_repo, _, err := c.Get(gws.ctxt, gws.githubDeploy.Organization, r.Name)
 	if err != nil {
 		// Creating repository
 		github_repo := github.Repository{
@@ -443,9 +448,9 @@ func (r *RepositoryStruct) ensure_exists(gws *GitHubStruct, ret *goforjj.PluginD
 			Name:        &r.Name,
 			HasIssues:   &r.IssueTracker,
 		}
-		found_repo, _, err = c.Create(gws.ctxt, gws.github_source.Organization, &github_repo)
+		found_repo, _, err = c.Create(gws.ctxt, gws.githubDeploy.Organization, &github_repo)
 		if err != nil {
-			ret.Errorf("Unable to create '%s' in organization '%s'. %s.", r.Name, gws.github_source.Organization, err)
+			ret.Errorf("Unable to create '%s' in organization '%s'. %s.", r.Name, gws.githubDeploy.Organization, err)
 			return err
 		}
 		log.Printf(ret.StatusAdd("Repo '%s': created", r.Name))
@@ -456,9 +461,9 @@ func (r *RepositoryStruct) ensure_exists(gws *GitHubStruct, ret *goforjj.PluginD
 		if repo_updated == nil {
 			log.Printf(ret.StatusAdd("Repo '%s': No change", r.Name))
 		} else {
-			found_repo, _, err = c.Edit(gws.ctxt, gws.github_source.Organization, r.Name, repo_updated)
+			found_repo, _, err = c.Edit(gws.ctxt, gws.githubDeploy.Organization, r.Name, repo_updated)
 			if err != nil {
-				ret.Errorf("Unable to update '%s' in organization '%s'. %s.", r.Name, gws.github_source.Organization, err)
+				ret.Errorf("Unable to update '%s' in organization '%s'. %s.", r.Name, gws.githubDeploy.Organization, err)
 				return err
 			}
 			log.Printf(ret.StatusAdd("Repo '%s': updated", r.Name))
@@ -497,7 +502,7 @@ func (r *RepositoryStruct) ensure_exists(gws *GitHubStruct, ret *goforjj.PluginD
 		Url: *found_repo.HTMLURL,
 	}
 
-	repo.Owner = gws.github_source.Organization
+	repo.Owner = gws.githubDeploy.Organization
 
 	ret.Repos[r.Name] = repo
 	return nil
@@ -561,18 +566,18 @@ func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_pol
 
 	if b, err := strconv.ParseBool(org_hook_disabled) ; err != nil {
 		log.Printf("Organization webhook disabled: invalid boolean: %s", org_hook_disabled)
-		g.github_source.NoOrgHook = true
+		g.githubDeploy.NoOrgHook = true
 	} else {
-		g.github_source.NoOrgHook = b
+		g.githubDeploy.NoOrgHook = b
 	}
-	if g.github_source.WebHooks == nil {
-		g.github_source.WebHooks = make(map[string]WebHookStruct)
+	if g.githubDeploy.WebHooks == nil {
+		g.githubDeploy.WebHooks = make(map[string]WebHookStruct)
 	}
 
 	if b, err := strconv.ParseBool(repo_hook_disabled); err != nil {
 		log.Printf("Organization webhook disabled: invalid boolean: %s", repo_hook_disabled)
 	} else {
-		g.github_source.NoRepoHook = b
+		g.githubDeploy.NoRepoHook = b
 	}
 
 	if v := inStringList(wh_policy, "manage", "sync"); v == "" || v == "sync" {
@@ -581,12 +586,12 @@ func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_pol
 		} else {
 			log.Print("'WebhooksManagement' is set by default to 'sync'.")
 		}
-		g.github_source.WebHookPolicy = ""
+		g.githubDeploy.WebHookPolicy = ""
 	} else {
-		g.github_source.WebHookPolicy = v
+		g.githubDeploy.WebHookPolicy = v
 	}
 
-	if g.github_source.NoOrgHook {
+	if g.githubDeploy.NoOrgHook {
 		return
 	}
 
@@ -609,9 +614,9 @@ func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_pol
 			data.SSLCheck = true
 		}
 
-		g.github_source.WebHooks[name] = data
+		g.githubDeploy.WebHooks[name] = data
 	}
-	if len(g.github_source.WebHooks) > 0 && g.github_source.WebHookPolicy == "sync" {
-		g.github_source.WebHookPolicy = "" // Do not show if no webhook orgs are defined.
+	if len(g.githubDeploy.WebHooks) > 0 && g.githubDeploy.WebHookPolicy == "sync" {
+		g.githubDeploy.WebHookPolicy = "" // Do not show if no webhook orgs are defined.
 	}
 }

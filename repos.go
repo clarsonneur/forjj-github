@@ -152,10 +152,10 @@ func (r *RepoInstanceStruct) IsValid(repo_name string, ret *goforjj.PluginData) 
 }
 
 func (g *GitHubStruct) SetHooks(req_repo *RepoInstanceStruct, hooks map[string]WebhooksInstanceStruct) {
-	repo := g.github_source.Repos[req_repo.Name]
+	repo := g.githubDeploy.Repos[req_repo.Name]
 	repo.WebHooks = make(map[string]WebHookStruct)
 
-	if g.github_source.NoRepoHook {
+	if g.githubDeploy.NoRepoHook {
 		return
 	}
 	for name, hook := range hooks {
@@ -181,7 +181,7 @@ func (g *GitHubStruct) SetHooks(req_repo *RepoInstanceStruct, hooks map[string]W
 		}
 
 		repo.WebHooks[name] = data
-		g.github_source.Repos[req_repo.Name] = repo
+		g.githubDeploy.Repos[req_repo.Name] = repo
 	}
 }
 
