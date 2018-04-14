@@ -164,7 +164,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		return
 	}
 
-	confFile := path.Join(gws.deployMount, instance, github_file)
+	confFile := path.Join(gws.deployMount, req.Forj.ForjjDeploymentEnv, instance, github_file)
 	if _, err := os.Stat(confFile); err != nil {
 		log.Printf(ret.StatusAdd("Warning! The workspace do not contain '%s'", confFile))
 		if gws.github_connect(req.Objects.App[instance].Server, ret) == nil {
