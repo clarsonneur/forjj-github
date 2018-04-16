@@ -120,7 +120,7 @@ func (g *GitHubStruct) load_yaml(file string) error {
 		return fmt.Errorf("Unable to load '%s'. %s", file, err)
 	}
 
-	err = yaml.Unmarshal(d, &g.github_source)
+	err = yaml.Unmarshal(d, &g.githubDeploy)
 	if err != nil {
 		return fmt.Errorf("Unable to decode github data in yaml. %s", err)
 	}

@@ -1,5 +1,5 @@
 hash: 89530b62641894d0f89c8e06e9581c39aee15799f099b2fa5b05256720e4236a
-updated: 2018-04-12T14:23:52.312685674Z
+updated: 2018-04-16T08:10:07.492219682Z
 imports:
 - name: github.com/alecthomas/kingpin
   version: 947dcec5ba9c011838740e680966fd7087a71d0d
@@ -16,13 +16,13 @@ imports:
   subpackages:
   - trace
 - name: github.com/forj-oss/goforjj
-  version: afb76b4fea15c7e5340700a1bba629f0a72f6ff9
+  version: ecd27e4e025ea1511b3d588c62aa481c1f228f58
 - name: github.com/golang/protobuf
   version: e09c5db296004fbe3f74490e84dcd62c3c5ddb1b
   subpackages:
   - proto
 - name: github.com/google/go-github
-  version: 89a446efe88e1636068183a91ca8845683683477
+  version: 6118bd0596576ec9d078899b508c6b3e9dfe134c
   subpackages:
   - github
 - name: github.com/google/go-querystring
@@ -44,7 +44,7 @@ imports:
 - name: github.com/pkg/errors
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: golang.org/x/net
-  version: 61147c48b25b599e5b561d2e9c4f3e1ef489ca41
+  version: 500e7a4f953ddaf55d316b4d3adc516aa0379622
   subpackages:
   - context
   - context/ctxhttp
@@ -54,7 +54,7 @@ imports:
   subpackages:
   - internal
 - name: golang.org/x/sys
-  version: 3b87a42e500a6dc65dae1a55d0b641295971163e
+  version: 2281fa97ef7b0c26324634d5a22f04babdac8713
   subpackages:
   - unix
 - name: google.golang.org/appengine

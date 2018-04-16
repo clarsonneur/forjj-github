@@ -90,7 +90,8 @@ type WebhooksInstanceStruct struct {
 // ************************
 
 type ForjCommonStruct struct {
-	ForjjDeploymentEnv string `json:"deployment-env"` // Deployment environment name
+	ForjjDeploymentEnv  string `json:"deployment-env"`  // Deployment environment name
+	ForjjDeploymentType string `json:"deployment-type"` // Deployment environment type
 	Debug string `json:"debug"`
 	ForjjDeployMount string `json:"forjj-deploy-mount"`
 	ForjjInstanceName string `json:"forjj-instance-name"`

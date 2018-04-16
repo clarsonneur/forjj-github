@@ -7,11 +7,12 @@ import (
 	"net/url"
 	"regexp"
 
+	"strconv"
+	"strings"
+
 	"github.com/forj-oss/goforjj"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
-	"strings"
-	"strconv"
 )
 
 func (req *CreateReq) InitOrganization(g *GitHubStruct) {
@@ -64,7 +65,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 	if !g.maintain_ctxt {
 		if server == "" || server == "api.github.com" || server == "github.com" {
 			g.github_source.Urls["github-base-url"] = "https://api.github.com/" // Default public API link
-			g.github_source.Urls["github-url"] = "https://github.com"          // Default public link
+			g.github_source.Urls["github-url"] = "https://github.com"           // Default public link
 		} else {
 			// To accept GitHub entreprise without ssl, permit server to have url format.
 			var entr_github_re *regexp.Regexp
@@ -124,6 +125,10 @@ type GithubEntrepriseOrganization struct {
 // - organization has current user as owner
 func (g *GitHubStruct) ensure_organization_exists(ret *goforjj.PluginData) (s bool) {
 
+	if g.githubDeploy.Organization == "" {
+		ret.Errorf("Invalid organization. The organization is empty")
+		return
+	}
 	s = false
 	_, resp, err := g.Client.Organizations.Get(g.ctxt, g.githubDeploy.Organization)
 	if err != nil && resp == nil {
@@ -148,9 +153,9 @@ func (g *GitHubStruct) ensure_organization_exists(ret *goforjj.PluginData) (s bo
 
 		_, err = g.Client.Do(g.ctxt, req, res_orga)
 		if err != nil {
-			log.Printf(ret.Errorf("Unable to create '%s' as organization. %s.\n" +
-				"Your credentials is probably insufficient.\n" +
-				"You can update your token access rights or ask to create the organization and attach a Full control access token to the organization owner dedicated to Forjj.\n" +
+			log.Printf(ret.Errorf("Unable to create '%s' as organization. %s.\n"+
+				"Your credentials is probably insufficient.\n"+
+				"You can update your token access rights or ask to create the organization and attach a Full control access token to the organization owner dedicated to Forjj.\n"+
 				"As soon as fixed, your can restart forjj maintain", g.githubDeploy.Organization, err))
 			return
 		}
@@ -200,7 +205,7 @@ func (g *GitHubStruct) setOrganizationTeams(ret *goforjj.PluginData) (_ bool) {
 			// TODO: Support more teams options to maintain
 			if _, found := g.githubDeploy.Groups[*github_team.Name]; !found {
 				// Remove team
-				if g.new_forge && ! g.force {
+				if g.new_forge && !g.force {
 					ret.Errorf("Unable to remove teams on a new Forge if you do not forcelly request it. " +
 						"To fix it, use the github force option or update your Forjfile.")
 					return
@@ -374,7 +379,7 @@ func (g *GitHubStruct) IsNewForge(ret *goforjj.PluginData) (_ bool) {
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
 	for name, repo := range g.githubDeploy.Repos {
-		if ! repo.Infra {
+		if !repo.Infra {
 			continue
 		}
 		// Infra repository.
@@ -386,11 +391,10 @@ func (g *GitHubStruct) IsNewForge(ret *goforjj.PluginData) (_ bool) {
 		}
 		return true
 	}
-	ret.Errorf("Unable to identify the infra repository. At least, one repo must be identified with " +
+	ret.Errorf("Unable to identify the infra repository. At least, one repo must be identified with "+
 		"`%s` in %s. You can use Forjj update to fix this.", "Infra: true", "github")
 	return
 }
-
 
 // Populate ret.Repos with req.repos status and information
 func (g *GitHubStruct) req_repos_exists(req *UpdateReq, ret *goforjj.PluginData) (err error) {
@@ -564,7 +568,7 @@ func updateBool(orig *bool, dest **bool, to bool, field string) (updated bool) {
 
 func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_policy string, hooks map[string]WebhooksInstanceStruct) {
 
-	if b, err := strconv.ParseBool(org_hook_disabled) ; err != nil {
+	if b, err := strconv.ParseBool(org_hook_disabled); err != nil {
 		log.Printf("Organization webhook disabled: invalid boolean: %s", org_hook_disabled)
 		g.githubDeploy.NoOrgHook = true
 	} else {
@@ -601,8 +605,8 @@ func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_pol
 		}
 
 		data := WebHookStruct{
-			Url: hook.Url,
-			Events: strings.Split(hook.Events, ","),
+			Url:     hook.Url,
+			Events:  strings.Split(hook.Events, ","),
 			Enabled: hook.Enabled,
 		}
 		if v, err := strconv.ParseBool(hook.SslCheck); err == nil {

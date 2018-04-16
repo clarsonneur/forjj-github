@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/forj-oss/goforjj"
 	"golang.org/x/sys/unix"
-	"os"
 )
 
 // Linux support only
@@ -37,9 +38,16 @@ func reqCheckPath(name, path string, ret *goforjj.PluginData) bool {
 // verify req data validity.
 // return true if something is wrong.
 func (g *GitHubStruct) verify_req_fails(ret *goforjj.PluginData, check map[string]bool) bool {
+	if v, ok := check["source"]; ok && v {
+		if reqCheckPath("source (forjj-source-mount)", g.source_mount, ret) {
+			return true
+		}
+	}
 
-	if reqCheckPath("source (forjj-source-mount)", g.source_mount, ret) {
-		return true
+	if v, ok := check["deploy"]; ok && v {
+		if reqCheckPath("source (forjj-deploy-mount)", g.deployMount, ret) {
+			return true
+		}
 	}
 
 	if v, ok := check["workspace"]; ok && v {

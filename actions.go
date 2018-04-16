@@ -34,6 +34,7 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	}
 	check := make(map[string]bool)
 	check["token"] = true
+	check["source"] = true
 	log.Printf("Checking parameters : %#v", gws)
 
 	//ensure source path is writeable
@@ -158,6 +159,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 
 	check := make(map[string]bool)
 	check["token"] = true
+	check["source"] = true
 	log.Printf("Checking parameters : %#v", gws)
 
 	if gws.verify_req_fails(ret, check) {
@@ -253,13 +255,15 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 	check := make(map[string]bool)
 	check["token"] = true
 	check["workspace"] = true
+	check["deploy"] = true
 
 	if gws.verify_req_fails(ret, check) { // true => include workspace testing.
 		return
 	}
 
+	confFile := path.Join(gws.deployMount, req.Forj.ForjjDeploymentEnv, instance, github_file)
 	// Read the github.yaml file.
-	if err := gws.load_yaml(path.Join(gws.deployMount, instance, github_file)); err != nil {
+	if err := gws.load_yaml(confFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
