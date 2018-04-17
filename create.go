@@ -68,7 +68,7 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 
 func (g *GitHubStruct) DefineRepoUrls(name string) (upstream goforjj.PluginRepoRemoteUrl) {
 	upstream = goforjj.PluginRepoRemoteUrl{
-		Ssh: "git@" + g.Client.BaseURL.Host + ":" + g.githubDeploy.Organization + "/" + name + ".git",
+		Ssh: g.github_source.Urls["github-ssh"] + g.githubDeploy.Organization + "/" + name + ".git",
 		Url: g.github_source.Urls["github-url"] + "/" + g.githubDeploy.Organization + "/" + name,
 	}
 	return

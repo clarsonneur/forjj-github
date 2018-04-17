@@ -55,7 +55,7 @@ func (g *GitHubStruct) github_connect(server string, ret *goforjj.PluginData) *g
 	return g.Client
 }
 
-// github_set_url will set Urls/github-base-url in create/update context
+// github_set_url will set Urls/github-base-url/github-ssh in create/update context
 // and set the url object when base-url is not empty (private GitHub)
 func (g *GitHubStruct) github_set_url(server string) (err error) {
 	gh_url := ""
@@ -66,6 +66,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 		if server == "" || server == "api.github.com" || server == "github.com" {
 			g.github_source.Urls["github-base-url"] = "https://api.github.com/" // Default public API link
 			g.github_source.Urls["github-url"] = "https://github.com"           // Default public link
+			g.github_source.Urls["github-ssh"] = "git@github.com:"              // Default SSH connect string
 		} else {
 			// To accept GitHub entreprise without ssl, permit server to have url format.
 			var entr_github_re *regexp.Regexp
@@ -78,6 +79,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 			if res == nil {
 				gh_url = "https://" + server + "/api/v3/"
 				g.github_source.Urls["github-url"] = "https://" + server
+				g.github_source.Urls["github-ssh"] = "git@" + server + ":"     // SSH connect string
 			} else {
 				if res[2] == "" {
 					return fmt.Errorf("Unable to determine github URL from '%s'. It must be [https?://]Server[:Port][/api/v3]", server)
@@ -88,6 +90,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 				gh_url += res[2]
 				g.github_source.Urls["github-url"] = gh_url
 				gh_url += "/api/v3/"
+				g.github_source.Urls["github-ssh"] = "git@" + res[2] + ":"     // SSH connect string
 			}
 			g.github_source.Urls["github-base-url"] = gh_url
 		}
