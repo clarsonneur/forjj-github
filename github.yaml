@@ -8,13 +8,14 @@ runtime:
   service_type: "REST API"
   service:
     parameters: [ "service", "start" ]
-created_flag_file: "{{ .InstanceName }}/{{.Name}}.yaml"
 task_flags: # Additional forjj task flags delivered by forjj to the plugin in req.Forj. Those flags are provided only through CLI.
   common:
     debug:
       help: "To activate github debug information"
     forjj-source-mount:
       help: "Where the source dir is located for github plugin container."
+    forjj-deploy-mount:
+      help: "Path of the deployment repo source."
     forjj-instance-name:
        help: "Name of the jenkins instance given by forjj."
   maintain:

@@ -11,11 +11,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/forj-oss/goforjj"
 	"log"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/forj-oss/goforjj"
 )
 
 const github_file = "github.yaml"
@@ -33,6 +34,7 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	}
 	check := make(map[string]bool)
 	check["token"] = true
+	check["source"] = true
 	log.Printf("Checking parameters : %#v", gws)
 
 	//ensure source path is writeable
@@ -40,7 +42,7 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 		return
 	}
 
-	if a, found := req.Objects.App[instance] ; !found {
+	if a, found := req.Objects.App[instance]; !found {
 		ret.Errorf("Internal issue. Forjj has not given the Application information for '%s'. Aborted.")
 		return
 	} else {
@@ -68,27 +70,54 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 
 	// A create won't be possible if source files already exist. The Update is the only possible option.
 	log.Print("Checking Infrastructure code existence.")
-	source_path := path.Join(req.Forj.ForjjSourceMount, req.Forj.ForjjInstanceName)
-	if _, err := os.Stat(source_path); err != nil {
-		if err = os.MkdirAll(source_path, 0755); err != nil {
-			ret.Errorf("Unable to create '%s'. %s", source_path, err)
+	sourceRepo := req.Forj.ForjjSourceMount
+	sourcePath := path.Join(sourceRepo, req.Forj.ForjjInstanceName)
+	sourceFile := path.Join(sourcePath, github_file)
+
+	deployRepo := path.Join(req.Forj.ForjjDeployMount, req.Forj.ForjjDeploymentEnv) // Must be created by Forjj with git init...
+	deployBase := path.Join(deployRepo, req.Forj.ForjjInstanceName)
+	deployFile := path.Join(deployBase, github_file)
+
+	// Path in the context of GIT.
+	gitFile := path.Join(req.Forj.ForjjInstanceName, github_file)
+
+	if _, err := os.Stat(sourcePath); err != nil {
+		if err = os.MkdirAll(sourcePath, 0755); err != nil {
+			ret.Errorf("Unable to create '%s'. %s", sourcePath, err)
 		}
 	}
-	if _, err := os.Stat(path.Join(source_path, github_file)); err == nil {
+
+	if _, err := os.Stat(deployRepo); err != nil {
+		ret.Errorf("Unable to create '%s'. Forjj must create it. %s", deployRepo, err)
+	}
+
+	if _, err := os.Stat(sourceFile); err == nil {
 		ret.Errorf("Unable to create the github configuration which already exist.\nUse 'update' to update it "+
 			"(or update %s), and 'maintain' to update your github service according to his configuration.",
 			path.Join(instance, github_file))
 		return 419
 	}
 
+	if _, err := os.Stat(deployBase); err != nil {
+		if err = os.Mkdir(deployBase, 0755); err != nil {
+			ret.Errorf("Unable to create '%s'. %s", deployBase, err)
+		}
+	}
+
 	ret.StatusAdd("Environment checked. Ready to be created.")
 
 	// Save gws.github_source.
-	if _, err := gws.save_yaml(path.Join(source_path, github_file)); err != nil {
+	if _, err := gws.save_yaml(&gws.github_source, sourceFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
-	log.Printf(ret.StatusAdd("Configuration saved in '%s'.", path.Join(req.Forj.ForjjInstanceName, github_file)))
+	log.Printf(ret.StatusAdd("Configuration saved in source Repo '%s' (%s).", gitFile, sourceRepo))
+
+	if _, err := gws.save_yaml(&gws.githubDeploy, deployFile); err != nil {
+		ret.Errorf("%s", err)
+		return
+	}
+	log.Printf(ret.StatusAdd("Configuration saved in deploy Repo '%s' (%s).", gitFile, deployRepo))
 
 	// Building final Post answer
 	// We assume ssh is used and forjj can push with appropriate credential.
@@ -99,7 +128,8 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	ret.Services.Urls["api_url"] = gws.github_source.Urls["github-base-url"]
 
 	ret.CommitMessage = fmt.Sprint("Github configuration created.")
-	ret.AddFile(path.Join(req.Forj.ForjjInstanceName, github_file))
+	ret.AddFile(goforjj.FilesSource, gitFile)
+	ret.AddFile(goforjj.FilesDeploy, gitFile)
 
 	return
 }
@@ -120,38 +150,40 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		return
 	} else {
 		gws = GitHubStruct{
-			source_mount:    req.Forj.ForjjSourceMount,
-			token:           a.Token,
-			app:             &a,
+			source_mount: req.Forj.ForjjSourceMount,
+			deployMount:  req.Forj.ForjjDeployMount,
+			token:        a.Token,
+			app:          &a,
 		}
 	}
 
-	source_path := path.Join(gws.source_mount, instance)
-
 	check := make(map[string]bool)
 	check["token"] = true
+	check["source"] = true
 	log.Printf("Checking parameters : %#v", gws)
 
 	if gws.verify_req_fails(ret, check) {
 		return
 	}
 
-	if _, err := os.Stat(path.Join(source_path, github_file)); err != nil {
-		log.Printf(ret.StatusAdd("Warning! The workspace do not contain '%s'", path.Join(source_path, github_file)))
+	confFile := path.Join(gws.deployMount, req.Forj.ForjjDeploymentEnv, instance, github_file)
+	if _, err := os.Stat(confFile); err != nil {
+		log.Printf(ret.StatusAdd("Warning! The workspace do not contain '%s'", confFile))
 		if gws.github_connect(req.Objects.App[instance].Server, ret) == nil {
 			return
 		}
 		req.InitOrganization(&gws)
 		gws.req_repos_exists(req, ret)
-		ret.Errorf("Unable to update the github configuration which doesn't exist.\nUse 'create' to create it "+
+		ret.Errorf("Unable to update the github configuration which doesn't exist.\n"+
+			"Use 'create' to create it "+
 			"(or create %s), and 'maintain' to update your github service according to his configuration.",
 			path.Join(instance, github_file))
-		log.Printf("Unable to update the github configuration '%s'", path.Join(source_path, github_file))
+		log.Printf("Unable to update the github configuration '%s'", confFile)
 		return 419
 	}
 
 	// Read the github.yaml file.
-	if err := gws.load_yaml(path.Join(gws.source_mount, instance, github_file)); err != nil {
+	if err := gws.load_yaml(confFile); err != nil {
 		ret.Errorf("Unable to update github instance '%s' source files. %s. Use 'create' to create it first.", instance, err)
 		return 419
 	}
@@ -171,7 +203,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 	gws.repos_exists(ret)
 
 	// Save gws.github_source.
-	if Updated, err := gws.save_yaml(path.Join(source_path, github_file)); err != nil {
+	if Updated, err := gws.save_yaml(&gws.githubDeploy, confFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	} else {
@@ -184,7 +216,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 			}
 
 			ret.CommitMessage = fmt.Sprint("Github configuration updated.")
-			ret.AddFile(path.Join(instance, github_file))
+			ret.AddFile(goforjj.FilesDeploy, path.Join(instance, github_file))
 		}
 	}
 
@@ -213,7 +245,7 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 		return
 	} else {
 		gws = GitHubStruct{
-			source_mount:    req.Forj.ForjjSourceMount,
+			deployMount:     req.Forj.ForjjDeployMount,
 			workspace_mount: req.Forj.ForjjWorkspaceMount,
 			token:           a.Token,
 			maintain_ctxt:   true,
@@ -223,13 +255,15 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 	check := make(map[string]bool)
 	check["token"] = true
 	check["workspace"] = true
+	check["deploy"] = true
 
 	if gws.verify_req_fails(ret, check) { // true => include workspace testing.
 		return
 	}
 
+	confFile := path.Join(gws.deployMount, req.Forj.ForjjDeploymentEnv, instance, github_file)
 	// Read the github.yaml file.
-	if err := gws.load_yaml(path.Join(gws.source_mount, instance, github_file)); err != nil {
+	if err := gws.load_yaml(confFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
@@ -256,12 +290,12 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 		return
 	}
 
-	if gws.github_source.NoRepos {
+	if gws.githubDeploy.NoRepos {
 		log.Printf(ret.StatusAdd("Repositories maintained limited to your infra repository"))
 	}
 	// loop on list of repos, and ensure they exist with minimal config and rights
-	for name, repo_data := range gws.github_source.Repos {
-		if !repo_data.Infra && gws.github_source.NoRepos {
+	for name, repo_data := range gws.githubDeploy.Repos {
+		if !repo_data.Infra && gws.githubDeploy.NoRepos {
 			log.Printf(ret.StatusAdd("Repo ignored: %s", name))
 		}
 		if err := repo_data.ensure_exists(&gws, ret); err != nil {

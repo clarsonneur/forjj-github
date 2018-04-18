@@ -11,24 +11,24 @@ import (
 
 func (g *GitHubStruct)MaintainOrgHooks(ret *goforjj.PluginData) (_ bool) {
 	// organization level
-	if hooks, _, err := g.Client.Organizations.ListHooks(g.ctxt, g.github_source.Organization, nil) ; err == nil {
+	if hooks, _, err := g.Client.Organizations.ListHooks(g.ctxt, g.githubDeploy.Organization, nil) ; err == nil {
 		for _, hook := range hooks {
 			if hook.GetName() != "web" {
 				continue
 			}
-			if h, found := g.GetWebHook(hook, g.github_source.WebHooks) ; found {
+			if h, found := g.GetWebHook(hook, g.githubDeploy.WebHooks) ; found {
 				h.identified = true
-				g.github_source.WebHooks[h.name] = h
+				g.githubDeploy.WebHooks[h.name] = h
 				if h.Update(hook) {
-					if _, _, err := g.Client.Organizations.EditHook(g.ctxt, g.github_source.Organization, hook.GetID(), hook) ; err != nil {
+					if _, _, err := g.Client.Organizations.EditHook(g.ctxt, g.githubDeploy.Organization, hook.GetID(), hook) ; err != nil {
 						log.Print(ret.Errorf("Failed to update '%s'. %s", hook.GetName(), err))
 						return
 					} else {
 						log.Print(ret.StatusAdd("WebHook '%s' updated.", h.name))
 					}
 				}
-			} else if g.github_source.WebHookPolicy == "" || g.github_source.WebHookPolicy == "sync" {
-				if _, err := g.Client.Organizations.DeleteHook(g.ctxt, g.github_source.Organization, hook.GetID()); err != nil {
+			} else if g.githubDeploy.WebHookPolicy == "" || g.githubDeploy.WebHookPolicy == "sync" {
+				if _, err := g.Client.Organizations.DeleteHook(g.ctxt, g.githubDeploy.Organization, hook.GetID()); err != nil {
 					log.Print(ret.Errorf("Failed to delete '%s'. %s", hook.Config["url"], err))
 					return
 				} else {
@@ -39,7 +39,7 @@ func (g *GitHubStruct)MaintainOrgHooks(ret *goforjj.PluginData) (_ bool) {
 			}
 		}
 	}
-	for name, hook := range g.github_source.WebHooks {
+	for name, hook := range g.githubDeploy.WebHooks {
 		if hook.identified {
 			continue
 		}
@@ -59,7 +59,7 @@ func (g *GitHubStruct)MaintainOrgHooks(ret *goforjj.PluginData) (_ bool) {
 
 		hook.HookEnabled(&new_hook)
 
-		if _, resp, err := g.Client.Organizations.CreateHook(g.ctxt, g.github_source.Organization, &new_hook) ; err != nil {
+		if _, resp, err := g.Client.Organizations.CreateHook(g.ctxt, g.githubDeploy.Organization, &new_hook) ; err != nil {
 			log.Print(ret.Errorf("Failed to create '%s'. %s", name, err))
 		} else if resp.StatusCode != 201 {
 			log.Print(ret.Errorf("Failed to create '%s'. %s", name, resp.Status))
@@ -97,7 +97,7 @@ func (GitHubStruct)GetWebHook(hook *github.Hook, webhooks map[string]WebHookStru
 
 func (g *GitHubStruct) MaintainHooks(repo *RepositoryStruct, ret *goforjj.PluginData) (_ bool) {
 	// Repository level
-	if hooks, _, err := g.Client.Repositories.ListHooks(g.ctxt, g.github_source.Organization, repo.Name, nil); err == nil {
+	if hooks, _, err := g.Client.Repositories.ListHooks(g.ctxt, g.githubDeploy.Organization, repo.Name, nil); err == nil {
 		for _, hook := range hooks {
 			if hook.GetName() != "web" {
 				continue
@@ -106,7 +106,7 @@ func (g *GitHubStruct) MaintainHooks(repo *RepositoryStruct, ret *goforjj.Plugin
 				h.identified = true
 				repo.WebHooks[h.name] = h
 				if h.Update(hook) {
-					if _, _, err := g.Client.Repositories.EditHook(g.ctxt, g.github_source.Organization, repo.Name, hook.GetID(), hook); err != nil {
+					if _, _, err := g.Client.Repositories.EditHook(g.ctxt, g.githubDeploy.Organization, repo.Name, hook.GetID(), hook); err != nil {
 						log.Print(ret.Errorf("Failed to update '%s'. %s", h.name, err))
 						return
 					} else {
@@ -114,7 +114,7 @@ func (g *GitHubStruct) MaintainHooks(repo *RepositoryStruct, ret *goforjj.Plugin
 					}
 				}
 			} else if repo.WebHookPolicy == "sync" || repo.WebHookPolicy == "" {
-				if _, err := g.Client.Repositories.DeleteHook(g.ctxt, g.github_source.Organization, repo.Name, hook.GetID()); err != nil {
+				if _, err := g.Client.Repositories.DeleteHook(g.ctxt, g.githubDeploy.Organization, repo.Name, hook.GetID()); err != nil {
 					log.Print(ret.Errorf("Failed to delete '%s'. %s", hook.Config["url"], err))
 					return
 				} else {
@@ -146,7 +146,7 @@ func (g *GitHubStruct) MaintainHooks(repo *RepositoryStruct, ret *goforjj.Plugin
 
 		hook.HookEnabled(&new_hook)
 
-		if _, resp, err := g.Client.Repositories.CreateHook(g.ctxt, g.github_source.Organization, repo.Name, &new_hook); err != nil {
+		if _, resp, err := g.Client.Repositories.CreateHook(g.ctxt, g.githubDeploy.Organization, repo.Name, &new_hook); err != nil {
 			log.Print(ret.Errorf("Failed to create '%s'. %s", name, err))
 			return
 		} else if resp.StatusCode != 201 {

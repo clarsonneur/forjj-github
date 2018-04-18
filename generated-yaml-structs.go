@@ -90,9 +90,12 @@ type WebhooksInstanceStruct struct {
 // ************************
 
 type ForjCommonStruct struct {
-		Debug string `json:"debug"`
-		ForjjInstanceName string `json:"forjj-instance-name"`
-		ForjjSourceMount string `json:"forjj-source-mount"`
+	ForjjDeploymentEnv  string `json:"deployment-env"`  // Deployment environment name
+	ForjjDeploymentType string `json:"deployment-type"` // Deployment environment type
+	Debug string `json:"debug"`
+	ForjjDeployMount string `json:"forjj-deploy-mount"`
+	ForjjInstanceName string `json:"forjj-instance-name"`
+	ForjjSourceMount string `json:"forjj-source-mount"`
 }
 
 type CreateReq struct {
@@ -162,13 +165,14 @@ const YamlDesc = "---\n" +
    "  service_type: \"REST API\"\n" +
    "  service:\n" +
    "    parameters: [ \"service\", \"start\" ]\n" +
-   "created_flag_file: \"{{ .InstanceName }}/{{.Name}}.yaml\"\n" +
    "task_flags: # Additional forjj task flags delivered by forjj to the plugin in req.Forj. Those flags are provided only through CLI.\n" +
    "  common:\n" +
    "    debug:\n" +
    "      help: \"To activate github debug information\"\n" +
    "    forjj-source-mount:\n" +
    "      help: \"Where the source dir is located for github plugin container.\"\n" +
+   "    forjj-deploy-mount:\n" +
+   "      help: \"Path of the deployment repo source.\"\n" +
    "    forjj-instance-name:\n" +
    "       help: \"Name of the jenkins instance given by forjj.\"\n" +
    "  maintain:\n" +
