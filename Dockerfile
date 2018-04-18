@@ -10,7 +10,7 @@ RUN apk update && \
     rm -f /var/cache/apk/*tar.gz && \
     adduser devops devops -D
 
-COPY github /bin/github
+COPY forjj-github /bin/github
 
 USER devops
 
