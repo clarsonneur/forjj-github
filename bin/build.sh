@@ -10,14 +10,14 @@ fi
 
 cd $BUILD_ENV_PROJECT
 
-TAG="-t $(awk '$0 ~ /^ *image: ".*"$/ { print $0 }' $(basename $BUILD_ENV_PROJECT).yaml | sed 's/^ *image: "*\(.*\)".*$/\1/g')"
+TAG="-t $(awk '$0 ~ /^ *image: ".*"$/ { print $0 }' github.yaml | sed 's/^ *image: "*\(.*\)".*$/\1/g')"
 
 if [ "$http_proxy" != "" ]
 then
    PROXY="--build-arg http_proxy=$http_proxy --build-arg https_proxy=$http_proxy --build-arg no_proxy=$no_proxy"
 fi
 
-create-build-env.sh
+create-go-build-env.sh
 
 if [ "$GOPATH" = "" ]
 then
