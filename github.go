@@ -79,7 +79,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 			if res == nil {
 				gh_url = "https://" + server + "/api/v3/"
 				g.github_source.Urls["github-url"] = "https://" + server
-				g.github_source.Urls["github-ssh"] = "git@" + server + ":"     // SSH connect string
+				g.github_source.Urls["github-ssh"] = "git@" + server + ":" // SSH connect string
 			} else {
 				if res[2] == "" {
 					return fmt.Errorf("Unable to determine github URL from '%s'. It must be [https?://]Server[:Port][/api/v3]", server)
@@ -90,15 +90,17 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 				gh_url += res[2]
 				g.github_source.Urls["github-url"] = gh_url
 				gh_url += "/api/v3/"
-				g.github_source.Urls["github-ssh"] = "git@" + res[2] + ":"     // SSH connect string
+				g.github_source.Urls["github-ssh"] = "git@" + res[2] + ":" // SSH connect string
 			}
 			g.github_source.Urls["github-base-url"] = gh_url
+			g.githubDeploy.Urls = g.github_source.Urls
 		}
 	} else {
+		// In case of maintain context, we read only Deploy repository. 
+		g.github_source.Urls = g.githubDeploy.Urls
 		gh_url = g.github_source.Urls["github-base-url"]
 	}
 
-	g.githubDeploy.Urls = g.github_source.Urls
 	if gh_url == "" {
 		return
 	}

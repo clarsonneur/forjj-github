@@ -30,7 +30,7 @@ type GitHubSourceStruct struct {
 }
 
 type GitHubDeployStruct struct {
-	goforjj.PluginService `,inline`                   // github base Url
+	goforjj.PluginService `yaml:",inline"`            // github base Url
 	Repos                 map[string]RepositoryStruct // Collection of repositories managed in github
 	NoRepos               bool                        `yaml:",omitempty"` // True to not manage repositories
 	Organization          string                      // Organization name
@@ -52,5 +52,5 @@ type TeamStruct struct {
 
 const (
 	github_source_file = "github.yaml"
-	githubDeployFile = github_source_file
+	githubDeployFile   = github_source_file
 )
