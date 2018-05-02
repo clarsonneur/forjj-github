@@ -11,6 +11,15 @@ type GitHubStruct struct {
 	source_mount    string // mount point
 	deployMount     string // mount point
 	workspace_mount string // mount point
+
+	instance        string
+
+	deployTo        string
+
+	deployFile      string
+	sourceFile      string
+	gitFile         string
+
 	token           string
 	debug           bool
 	user            string // github user name

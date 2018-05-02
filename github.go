@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
+	"path"
 	"regexp"
 
 	"strconv"
@@ -640,4 +642,60 @@ func (g *GitHubStruct) SetOrgHooks(org_hook_disabled, repo_hook_disabled, wh_pol
 	if len(g.githubDeploy.WebHooks) > 0 && g.githubDeploy.WebHookPolicy == "sync" {
 		g.githubDeploy.WebHookPolicy = "" // Do not show if no webhook orgs are defined.
 	}
+}
+
+func (g *GitHubStruct) checkSourcesExistence(when string) (err error) {
+	log.Print("Checking Infrastructure code existence.")
+	sourceRepo := g.source_mount
+	sourcePath := path.Join(sourceRepo, g.instance)
+	g.sourceFile = path.Join(sourcePath, github_file)
+
+	deployRepo := path.Join(g.deployMount, g.deployTo) // Must be created by Forjj with git init...
+	deployBase := path.Join(deployRepo, g.instance)
+
+	g.deployFile = path.Join(deployBase, github_file)
+
+	// Path in the context of GIT.
+	g.gitFile = path.Join(g.instance, github_file)
+
+	// Path in the context of GIT.
+	switch when {
+	case "create":
+		if _, err := os.Stat(sourcePath); err != nil {
+			if err = os.MkdirAll(sourcePath, 0755); err != nil {
+				return fmt.Errorf("Unable to create '%s'. %s", sourcePath, err)
+			}
+		}
+
+		if _, err := os.Stat(deployRepo); err != nil {
+			return fmt.Errorf("Unable to create '%s'. Forjj must create it. %s", deployRepo, err)
+		}
+
+		if _, err := os.Stat(g.sourceFile); err == nil {
+			return fmt.Errorf("Unable to create the github configuration which already exist.\nUse 'update' to update it "+
+				"(or update %s), and 'maintain' to update your github service according to his configuration.",
+				path.Join(g.instance, github_file))
+		}
+
+		if _, err := os.Stat(deployBase); err != nil {
+			if err = os.Mkdir(deployBase, 0755); err != nil {
+				return fmt.Errorf("Unable to create '%s'. %s", deployBase, err)
+			}
+		}
+		return
+
+	case "update":
+		if _, err := os.Stat(deployBase); err != nil {
+			if err = os.Mkdir(deployBase, 0755); err != nil {
+				return fmt.Errorf("Unable to create '%s'. %s", deployBase, err)
+			}
+		}
+		if _, err := os.Stat(g.sourceFile); err != nil {
+			return fmt.Errorf("Unable to update the github configuration which doesn't exist.\n" +
+				"Use 'create' to create it or clone it")
+		}
+
+		return
+	}
+	return
 }

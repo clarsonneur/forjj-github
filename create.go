@@ -9,14 +9,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// create_yaml_data creates the yaml data in Memory. Nothing saved.
 func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData) error {
 	// Write the github.yaml source file.
 	if g.github_source.Urls == nil {
 		return fmt.Errorf("Internal Error. Urls was not set")
-	}
-
-	if !req.InitOrganization(g) {
-		return fmt.Errorf("Internal Error. Unable to define the organization")
 	}
 
 	g.githubDeploy.Repos = make(map[string]RepositoryStruct)

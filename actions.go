@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"path"
 
 	"github.com/forj-oss/goforjj"
@@ -21,7 +20,7 @@ import (
 
 const github_file = "github.yaml"
 
-// Do creating plugin task
+// DoCreate creating plugin task
 // req_data contains the request data posted by forjj. Structure generated from 'github.yaml'.
 // ret_data contains the response structure to return back to forjj.
 //
@@ -30,6 +29,9 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 	instance := req.Forj.ForjjInstanceName
 	gws := GitHubStruct{
 		source_mount: req.Forj.ForjjSourceMount,
+		deployMount:  req.Forj.ForjjDeployMount,
+		instance:     instance,
+		deployTo:     req.Forj.ForjjDeploymentEnv,
 		token:        req.Objects.App[instance].Token,
 	}
 	check := make(map[string]bool)
@@ -55,6 +57,11 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 		return
 	}
 
+	if !req.InitOrganization(&gws) {
+		ret.Errorf("Internal Error. Unable to define the organization")
+		return
+	}
+
 	// Build gws.github_source yaml structure.
 	if err := gws.create_yaml_data(req, ret); err != nil {
 		ret.Errorf("Unable to create. %s", err)
@@ -68,56 +75,28 @@ func DoCreate(w http.ResponseWriter, r *http.Request, req *CreateReq, ret *gofor
 		return 419
 	}
 
-	// A create won't be possible if source files already exist. The Update is the only possible option.
-	log.Print("Checking Infrastructure code existence.")
-	sourceRepo := req.Forj.ForjjSourceMount
-	sourcePath := path.Join(sourceRepo, req.Forj.ForjjInstanceName)
-	sourceFile := path.Join(sourcePath, github_file)
-
-	deployRepo := path.Join(req.Forj.ForjjDeployMount, req.Forj.ForjjDeploymentEnv) // Must be created by Forjj with git init...
-	deployBase := path.Join(deployRepo, req.Forj.ForjjInstanceName)
-	deployFile := path.Join(deployBase, github_file)
-
-	// Path in the context of GIT.
-	gitFile := path.Join(req.Forj.ForjjInstanceName, github_file)
-
-	if _, err := os.Stat(sourcePath); err != nil {
-		if err = os.MkdirAll(sourcePath, 0755); err != nil {
-			ret.Errorf("Unable to create '%s'. %s", sourcePath, err)
-		}
-	}
-
-	if _, err := os.Stat(deployRepo); err != nil {
-		ret.Errorf("Unable to create '%s'. Forjj must create it. %s", deployRepo, err)
-	}
-
-	if _, err := os.Stat(sourceFile); err == nil {
-		ret.Errorf("Unable to create the github configuration which already exist.\nUse 'update' to update it "+
-			"(or update %s), and 'maintain' to update your github service according to his configuration.",
-			path.Join(instance, github_file))
-		return 419
-	}
-
-	if _, err := os.Stat(deployBase); err != nil {
-		if err = os.Mkdir(deployBase, 0755); err != nil {
-			ret.Errorf("Unable to create '%s'. %s", deployBase, err)
-		}
+	if err := gws.checkSourcesExistence("create"); err != nil {
+		ret.Errorf("%s\nUnable to 'create' your forge", err)
+		return
 	}
 
 	ret.StatusAdd("Environment checked. Ready to be created.")
 
-	// Save gws.github_source.
-	if _, err := gws.save_yaml(&gws.github_source, sourceFile); err != nil {
-		ret.Errorf("%s", err)
-		return
-	}
-	log.Printf(ret.StatusAdd("Configuration saved in source Repo '%s' (%s).", gitFile, sourceRepo))
+	// Path in the context of GIT.
+	gitFile := path.Join(gws.instance, github_file)
 
-	if _, err := gws.save_yaml(&gws.githubDeploy, deployFile); err != nil {
+	// Save gws.github_source.
+	if _, err := gws.save_yaml(&gws.github_source, gws.sourceFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	}
-	log.Printf(ret.StatusAdd("Configuration saved in deploy Repo '%s' (%s).", gitFile, deployRepo))
+	log.Printf(ret.StatusAdd("Configuration saved in source Repo '%s' (%s).", gitFile, gws.source_mount))
+
+	if _, err := gws.save_yaml(&gws.githubDeploy, gws.deployFile); err != nil {
+		ret.Errorf("%s", err)
+		return
+	}
+	log.Printf(ret.StatusAdd("Configuration saved in deploy Repo '%s' (%s).", gitFile, path.Join(gws.deployMount, gws.deployTo)))
 
 	// Building final Post answer
 	// We assume ssh is used and forjj can push with appropriate credential.
@@ -152,6 +131,8 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		gws = GitHubStruct{
 			source_mount: req.Forj.ForjjSourceMount,
 			deployMount:  req.Forj.ForjjDeployMount,
+			instance:     instance,
+			deployTo:     req.Forj.ForjjDeploymentEnv,
 			token:        a.Token,
 			app:          &a,
 		}
@@ -166,27 +147,18 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		return
 	}
 
-	confFile := path.Join(gws.deployMount, req.Forj.ForjjDeploymentEnv, instance, github_file)
-	if _, err := os.Stat(confFile); err != nil {
-		log.Printf(ret.StatusAdd("Warning! The workspace do not contain '%s'", confFile))
-		if gws.github_connect(req.Objects.App[instance].Server, ret) == nil {
-			return
-		}
-		if !req.InitOrganization(&gws) {
-			log.Printf(ret.Errorf("Unable to update. The organization was not set in the request."))
-			return
-		}
-		gws.req_repos_exists(req, ret)
-		ret.Errorf("Unable to update the github configuration which doesn't exist.\n"+
-			"Use 'create' to create it "+
-			"(or create %s), and 'maintain' to update your github service according to his configuration.",
-			path.Join(instance, github_file))
-		log.Printf("Unable to update the github configuration '%s'", confFile)
-		return 419
+	if !req.InitOrganization(&gws) {
+		log.Printf(ret.Errorf("Unable to update. The organization was not set in the request."))
+		return
+	}
+
+	if err := gws.checkSourcesExistence("update"); err != nil {
+		ret.Errorf("%s\nUnable to 'update' your forge", err)
+		return
 	}
 
 	// Read the github.yaml file.
-	if err := gws.load_yaml(confFile); err != nil {
+	if err := gws.load_yaml(gws.sourceFile); err != nil {
 		ret.Errorf("Unable to update github instance '%s' source files. %s. Use 'create' to create it first.", instance, err)
 		return 419
 	}
@@ -206,7 +178,7 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 	gws.repos_exists(ret)
 
 	// Save gws.github_source.
-	if Updated, err := gws.save_yaml(&gws.githubDeploy, confFile); err != nil {
+	if Updated, err := gws.save_yaml(&gws.githubDeploy, gws.deployFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	} else {
