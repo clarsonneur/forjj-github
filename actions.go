@@ -172,7 +172,10 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		if gws.github_connect(req.Objects.App[instance].Server, ret) == nil {
 			return
 		}
-		req.InitOrganization(&gws)
+		if !req.InitOrganization(&gws) {
+			log.Printf(ret.Errorf("Unable to update. The organization was not set in the request."))
+			return
+		}
 		gws.req_repos_exists(req, ret)
 		ret.Errorf("Unable to update the github configuration which doesn't exist.\n"+
 			"Use 'create' to create it "+

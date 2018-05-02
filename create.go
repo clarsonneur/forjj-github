@@ -12,10 +12,12 @@ import (
 func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData) error {
 	// Write the github.yaml source file.
 	if g.github_source.Urls == nil {
-		return fmt.Errorf("Internal Error. Urls was not set.")
+		return fmt.Errorf("Internal Error. Urls was not set")
 	}
 
-	req.InitOrganization(g)
+	if !req.InitOrganization(g) {
+		return fmt.Errorf("Internal Error. Unable to define the organization")
+	}
 
 	g.githubDeploy.Repos = make(map[string]RepositoryStruct)
 	g.githubDeploy.Users = make(map[string]string)

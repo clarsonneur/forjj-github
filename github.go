@@ -15,18 +15,30 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func (req *CreateReq) InitOrganization(g *GitHubStruct) {
-	instance := req.Forj.ForjjInstanceName
-	if orga := req.Objects.App[instance].Organization; orga == "" {
-		g.githubDeploy.Organization = req.Objects.App[instance].ForjjOrganization
+func (req *CreateReq) InitOrganization(g *GitHubStruct) (ret bool) {
+	if app, found := req.Objects.App[req.Forj.ForjjInstanceName]; found {
+		g.SetOrganization(app)
+		ret = true
+	}
+	return
+}
+
+// No change for now.
+func (req *UpdateReq) InitOrganization(g *GitHubStruct) (ret bool) {
+	if app, found := req.Objects.App[req.Forj.ForjjInstanceName]; found {
+		g.SetOrganization(app)
+		ret = true
+	}
+	return
+}
+
+func (g *GitHubStruct) SetOrganization(fromApp AppInstanceStruct) {
+	if orga := fromApp.Organization; orga == "" {
+		g.githubDeploy.Organization = fromApp.ForjjOrganization
 	} else {
 		g.githubDeploy.Organization = orga
 	}
 
-}
-
-// No change for now.
-func (req *UpdateReq) InitOrganization(g *GitHubStruct) {
 }
 
 func (g *GitHubStruct) github_connect(server string, ret *goforjj.PluginData) *github.Client {
@@ -96,7 +108,7 @@ func (g *GitHubStruct) github_set_url(server string) (err error) {
 			g.githubDeploy.Urls = g.github_source.Urls
 		}
 	} else {
-		// In case of maintain context, we read only Deploy repository. 
+		// In case of maintain context, we read only Deploy repository.
 		g.github_source.Urls = g.githubDeploy.Urls
 		gh_url = g.github_source.Urls["github-base-url"]
 	}
@@ -419,7 +431,7 @@ func (g *GitHubStruct) req_repos_exists(req *UpdateReq, ret *goforjj.PluginData)
 			Exist:         (err == nil),
 			Remotes:       make(map[string]goforjj.PluginRepoRemoteUrl),
 			BranchConnect: make(map[string]string),
-			Owner:         *found_repo.Organization.Name,
+			Owner:         g.githubDeploy.Organization,
 		}
 		if err == nil {
 			r.Remotes["origin"] = goforjj.PluginRepoRemoteUrl{
