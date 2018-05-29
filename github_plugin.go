@@ -12,37 +12,39 @@ type GitHubStruct struct {
 	deployMount     string // mount point
 	workspace_mount string // mount point
 
-	instance        string
+	instance string
 
-	deployTo        string
+	deployTo string
 
-	deployFile      string
-	sourceFile      string
-	gitFile         string
+	deployFile string
+	sourceFile string
+	gitFile    string
 
-	token           string
-	debug           bool
-	user            string // github user name
-	ctxt            context.Context
-	Client          *github.Client
-	github_source   GitHubSourceStruct // github source structure (yaml)
-	githubDeploy    GitHubDeployStruct // github source deploy structure (yaml)
-	app             *AppInstanceStruct // Application information given by Forjj at Create/Update phase
-	infra_repo      string
-	maintain_ctxt   bool
-	new_forge       bool
-	force           bool
+	token         string
+	debug         bool
+	user          string // github user name
+	ctxt          context.Context
+	Client        *github.Client
+	github_source GitHubSourceStruct // github source structure (yaml)
+	githubDeploy  GitHubDeployStruct // github source deploy structure (yaml)
+	app           *AppInstanceStruct // Application information given by Forjj at Create/Update phase
+	infra_repo    string
+	maintain_ctxt bool
+	new_forge     bool
+	force         bool
 }
 
 type GitHubSourceStruct struct {
 	goforjj.PluginService `,inline` // github base Url
+	ProdOrganization      string    `yaml:"production-organization-name,omitempty"` // Production organization name
 }
 
 type GitHubDeployStruct struct {
 	goforjj.PluginService `yaml:",inline"`            // github base Url
 	Repos                 map[string]RepositoryStruct // Collection of repositories managed in github
 	NoRepos               bool                        `yaml:",omitempty"` // True to not manage repositories
-	Organization          string                      // Organization name
+	ProdOrganization      string                      // Production organization name
+	Organization          string                      // Deployment Organization name
 	OrgDisplayName        string                      // Organization's display name.
 	NoTeams               bool                        `yaml:",omitempty"` // True to not manage organization users
 	Users                 map[string]string           // Collection of users role at organization level

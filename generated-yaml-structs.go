@@ -16,11 +16,14 @@ type AppInstanceStruct struct {
 	OrgHookPolicy string `json:"org-hook-policy"` // Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
 	Organization string `json:"organization"` // Github Organization name. By default, it uses the FORJJ organization name
 	OrganizationWebhooksDisabled string `json:"organization-webhooks-disabled"` // true if the plugin should not manage github organization webhooks.
+	ProDeployment string `json:"pro-deployment"` // true if current deployment is production one
+	ProductionOrganization string `json:"production-organization"` // Production github organization name. By default, it uses the FORJJ organization name
 	ReposDisabled string `json:"repos-disabled"` // true if the plugin should not manage github repositories except the infra repository.
 	ReposWebhooksDisabled string `json:"repos-webhooks-disabled"` // true if the plugin should not manage github repositories webhooks.
 	Server string `json:"server"` // Github Enterprise Server name. By default, public 'github.com' API is used.
 	TeamsDisabled string `json:"teams-disabled"` // true if the plugin should not manage github users and groups
 	Token string `json:"token"` // github token to access. This token must authorize organization level access.
+
 }
 
 // Object group groups structure
@@ -34,6 +37,7 @@ type GroupInstanceStruct struct {
 	Members []string `json:"members"` // List of users to attach to the new group.
 	Name string `json:"name"` // group name
 	Role string `json:"role"` // List of roles to apply to the new group.
+
 }
 
 // Object repo groups structure
@@ -49,9 +53,11 @@ type RepoInstanceStruct struct {
 	Groups string `json:"groups"` // List of groups to attach to the repository, separated by comma.
 	Issue_tracker string `json:"issue_tracker"` // To activate the Issue tracker to the Repository
 	Name string `json:"name"` // Repository name
+	Role string `json:"role"` // Role of the repository. Can be infra, deploy or code
 	Title string `json:"title"` // Github Repository title
 	Users string `json:"users"` // List of users to attach to the repository, separated by comma.
 	WebhooksManagement string `json:"webhooks-management"` // Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
+
 }
 
 // Object user groups structure
@@ -64,6 +70,7 @@ type RepoInstanceStruct struct {
 type UserInstanceStruct struct {
 	Name string `json:"name"` // 
 	Role string `json:"role"` // 
+
 }
 
 // Object webhooks groups structure
@@ -82,6 +89,7 @@ type WebhooksInstanceStruct struct {
 	Repos string `json:"repos"` // List of repositories separated by comma subscribing to the webhook.
 	SslCheck string `json:"ssl-check"` // true (default) to ask github to verify the SSL.
 	Url string `json:"url"` // Webhook url to set
+
 }
 
 
@@ -102,7 +110,10 @@ type CreateReq struct {
 	Forj struct {
 		ForjCommonStruct
 	}
+
 	Objects CreateArgReq
+
+	Creds map[string]string
 }
 
 type CreateArgReq struct {
@@ -121,7 +132,10 @@ type UpdateReq struct {
 	Forj struct {
 		ForjCommonStruct
 	}
+
 	Objects UpdateArgReq
+
+	Creds map[string]string
 }
 
 type UpdateArgReq struct {
@@ -142,7 +156,10 @@ type MaintainReq struct {
 		Force string `json:"force"`
 		ForjjWorkspaceMount string `json:"forjj-workspace-mount"`
 	}
+
 	Objects MaintainArgReq
+
+	Creds map[string]string
 }
 
 type MaintainArgReq struct {
@@ -193,6 +210,9 @@ const YamlDesc = "---\n" +
    "      organization:\n" +
    "        only-for-actions: [\"add\"]\n" +
    "        help: \"Github Organization name. By default, it uses the FORJJ organization name\"\n" +
+   "      production-organization:\n" +
+   "        help: \"Production github organization name. By default, it uses the FORJJ organization name\"\n" +
+   "        default: \"{{ .Deployments.GetFromPRO \\\"app\\\" .Current.Name \\\"organization\\\" }}\"\n" +
    "      forjj-infra:\n" +
    "        only-for-actions: [\"add\", \"change\"]\n" +
    "        help: \"Name of the Infra repository to use in github if requested.\"\n" +
@@ -218,6 +238,9 @@ const YamlDesc = "---\n" +
    "      org-hook-policy:\n" +
    "        help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.\n" +
    "        default: sync\n" +
+   "      pro-deployment:\n" +
+   "        help: true if current deployment is production one\n" +
+   "        default: \"{{ if (eq (.Deployments.GetFromName .Current.Deployment).Type \\\"PRO\\\") }}true{{ else }}false{{ end }}\"\n" +
    "  # Define github group exposure to forjj\n" +
    "  group: # New object type in forjj\n" +
    "    # Default is : actions: [\"add\", \"change\", \"remove\", \"list\", \"rename\"]\n" +
@@ -273,6 +296,9 @@ const YamlDesc = "---\n" +
    "      webhooks-management:\n" +
    "        help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.\n" +
    "        default: sync\n" +
+   "      role:\n" +
+   "        help: Role of the repository. Can be infra, deploy or code\n" +
+   "        default: \"{{ (index .Forjfile.Repos .Current.Name).Role }}\"\n" +
    "  webhooks:\n" +
    "    identified_by_flag: name\n" +
    "    flags:\n" +

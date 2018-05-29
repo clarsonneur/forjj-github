@@ -36,6 +36,9 @@ objects: # All objects will be delivered by forjj except workspace/infra under o
       organization:
         only-for-actions: ["add"]
         help: "Github Organization name. By default, it uses the FORJJ organization name"
+      production-organization:
+        help: "Production github organization name. By default, it uses the FORJJ organization name"
+        default: "{{ .Deployments.GetFromPRO \"app\" .Current.Name \"organization\" }}"
       forjj-infra:
         only-for-actions: ["add", "change"]
         help: "Name of the Infra repository to use in github if requested."
@@ -61,6 +64,9 @@ objects: # All objects will be delivered by forjj except workspace/infra under o
       org-hook-policy:
         help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
         default: sync
+      pro-deployment:
+        help: true if current deployment is production one
+        default: "{{ if (eq (.Deployments.Get .Current.Deployment).Type \"PRO\") }}true{{ else }}false{{ end }}"
   # Define github group exposure to forjj
   group: # New object type in forjj
     # Default is : actions: ["add", "change", "remove", "list", "rename"]
@@ -116,6 +122,9 @@ objects: # All objects will be delivered by forjj except workspace/infra under o
       webhooks-management:
         help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
         default: sync
+      role:
+        help: Role of the repository. Can be infra, deploy or code
+        default: "{{ (index .Forjfile.Repos .Current.Name).Role }}"
   webhooks:
     identified_by_flag: name
     flags:
