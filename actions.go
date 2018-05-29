@@ -147,11 +147,6 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 		return
 	}
 
-	if !req.InitOrganization(&gws) {
-		log.Printf(ret.Errorf("Unable to update. The organization was not set in the request."))
-		return
-	}
-
 	if err := gws.checkSourcesExistence("update"); err != nil {
 		ret.Errorf("%s\nUnable to 'update' your forge", err)
 		return
@@ -161,6 +156,11 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 	if err := gws.load_yaml(gws.sourceFile); err != nil {
 		ret.Errorf("Unable to update github instance '%s' source files. %s. Use 'create' to create it first.", instance, err)
 		return 419
+	}
+
+	if !req.InitOrganization(&gws) {
+		log.Printf(ret.Errorf("Unable to update. The organization was not set in the request."))
+		return
 	}
 
 	if gws.github_connect(req.Objects.App[instance].Server, ret) == nil {
@@ -178,19 +178,31 @@ func DoUpdate(w http.ResponseWriter, r *http.Request, req *UpdateReq, ret *gofor
 	gws.repos_exists(ret)
 
 	// Save gws.github_source.
+	if Updated, err := gws.save_yaml(&gws.github_source, gws.sourceFile); err != nil {
+		ret.Errorf("%s", err)
+		return
+	} else {
+		if !Updated {
+			log.Printf(ret.StatusAdd("Source: No github configuration update detected."))
+		} else {
+			log.Printf(ret.StatusAdd("Source: github configuration saved in '%s'.", path.Join(instance, github_file)))
+
+			ret.CommitMessage = fmt.Sprint("Source: github configuration updated.")
+			ret.AddFile(goforjj.FilesSource, path.Join(instance, github_file))
+		}
+	}
+
+	// Save gws.github_deploy.
 	if Updated, err := gws.save_yaml(&gws.githubDeploy, gws.deployFile); err != nil {
 		ret.Errorf("%s", err)
 		return
 	} else {
 		if !Updated {
-			log.Printf(ret.StatusAdd("No update detected."))
+			log.Printf(ret.StatusAdd("Deploy: No github configuration update detected."))
 		} else {
-			log.Printf(ret.StatusAdd("Configuration saved in '%s'.", path.Join(instance, github_file)))
-			for k, v := range gws.github_source.Urls {
-				ret.Services.Urls[k] = v
-			}
+			log.Printf(ret.StatusAdd("Deploy: github configuration saved in '%s'.", path.Join(instance, github_file)))
 
-			ret.CommitMessage = fmt.Sprint("Github configuration updated.")
+			ret.CommitMessage = fmt.Sprint("Deploy: github configuration updated.")
 			ret.AddFile(goforjj.FilesDeploy, path.Join(instance, github_file))
 		}
 	}
