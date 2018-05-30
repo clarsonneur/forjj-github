@@ -2,27 +2,29 @@ package main
 
 import (
 	"fmt"
-	"github.com/forj-oss/goforjj"
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/forj-oss/goforjj"
 )
 
 type RepositoryStruct struct { // Used to stored the yaml source file. Not used to respond to the API requester.
-	Name          string                                       // Name of the Repo
-	Flow          string                   `yaml:",omitempty"` // Flow applied on the repo.
-	Description   string                   `yaml:",omitempty"` // Title in github repository
-	Disabled      bool                     `yaml:",omitempty"` // disable the repository (became private with no team/collaborators)
-	IssueTracker  bool        `yaml:"issue_tracker,omitempty"` // Issue tracker option
-	Users         map[string]string        `yaml:",omitempty"` // Collection of users role
-	Groups        map[string]string        `yaml:",omitempty"` // Collection of groups role
+	Name         string            // Name of the Repo
+	Flow         string            `yaml:",omitempty"`              // Flow applied on the repo.
+	Description  string            `yaml:",omitempty"`              // Title in github repository
+	Disabled     bool              `yaml:",omitempty"`              // disable the repository (became private with no team/collaborators)
+	IssueTracker bool              `yaml:"issue_tracker,omitempty"` // Issue tracker option
+	Users        map[string]string `yaml:",omitempty"`              // Collection of users role
+	Groups       map[string]string `yaml:",omitempty"`              // Collection of groups role
 	// Following data are used at runtime but not saved. Used to respond to the API.
-	Infra         bool                     `yaml:",omitempty"` // true if the repos is the infra one.
-	exist         bool                     `yaml:",omitempty"` // True if the repo exist.
-	remotes       map[string]goforjj.PluginRepoRemoteUrl       // k: remote name, v: remote urls
-	branchConnect map[string]string                            // k: local branch name, v: remote/branch
-	WebHooks      map[string]WebHookStruct `yaml:",omitempty"` // k: name, v: webhook
-	WebHookPolicy string                   `yaml:",omitempty"` // 'sync' or 'manage'. An
+	Infra         bool                                   `yaml:",omitempty"` // true if the repos is the infra one.
+	exist         bool                                   `yaml:",omitempty"` // True if the repo exist.
+	remotes       map[string]goforjj.PluginRepoRemoteUrl // k: remote name, v: remote urls
+	branchConnect map[string]string                      // k: local branch name, v: remote/branch
+	WebHooks      map[string]WebHookStruct               `yaml:",omitempty"` // k: name, v: webhook
+	WebHookPolicy string                                 `yaml:",omitempty"` // 'sync' or 'manage'. An
+	Role          string                                 `yaml:",omitempty"` // Repository Role given by Forjj
 }
 
 func (r *RepositoryStruct) set(
@@ -50,7 +52,7 @@ func (r *RepositoryStruct) set(
 	r.AddGroups(repo.Groups)
 	r.remotes = remotes
 	r.branchConnect = branchConnect
-	if v := inStringList(repo.WebhooksManagement, "manage", "sync") ; v == "" {
+	if v := inStringList(repo.WebhooksManagement, "manage", "sync"); v == "" {
 		if repo.WebhooksManagement != "" {
 			log.Printf("Repo %s: 'Invalid value '%s' for 'WebhooksManagement'. Set it to 'sync'.",
 				r.Name, repo.WebhooksManagement)
@@ -61,6 +63,7 @@ func (r *RepositoryStruct) set(
 	} else {
 		r.WebHookPolicy = v
 	}
+	r.Role = repo.Role
 	return r
 }
 
@@ -166,9 +169,9 @@ func (g *GitHubStruct) SetHooks(req_repo *RepoInstanceStruct, hooks map[string]W
 			continue
 		}
 		data := WebHookStruct{
-			Url: hook.Url,
-			Events: strings.Split(hook.Events, ","),
-			Enabled: hook.Enabled,
+			Url:         hook.Url,
+			Events:      strings.Split(hook.Events, ","),
+			Enabled:     hook.Enabled,
 			ContentType: hook.PayloadFormat,
 		}
 		if v, err := strconv.ParseBool(hook.SslCheck); err == nil {
@@ -184,5 +187,3 @@ func (g *GitHubStruct) SetHooks(req_repo *RepoInstanceStruct, hooks map[string]W
 		g.githubDeploy.Repos[req_repo.Name] = repo
 	}
 }
-
-

@@ -40,6 +40,12 @@ func (g *GitHubStruct) SetOrganization(fromApp AppInstanceStruct) {
 	} else {
 		g.githubDeploy.Organization = orga
 	}
+	if orga := fromApp.ProductionOrganization; orga == "" {
+		g.githubDeploy.ProdOrganization = fromApp.ForjjOrganization
+	} else {
+		g.githubDeploy.ProdOrganization = orga
+	}
+	g.github_source.ProdOrganization = g.githubDeploy.ProdOrganization
 
 }
 
@@ -367,7 +373,11 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
 	for name, repo_data := range g.githubDeploy.Repos {
-		if found_repo, _, e := c.Get(g.ctxt, g.githubDeploy.Organization, name); e == nil {
+		organization := g.githubDeploy.Organization
+		if repo_data.Role != "code" {
+			organization = g.githubDeploy.ProdOrganization
+		}
+		if found_repo, _, e := c.Get(g.ctxt, organization, name); e == nil {
 			if err == nil && name == g.app.ForjjInfra { // Infra repository.
 				err = fmt.Errorf("Infra repository '%s' already exist in github server.", name)
 			}
