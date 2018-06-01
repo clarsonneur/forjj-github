@@ -123,8 +123,7 @@ objects: # All objects will be delivered by forjj except workspace/infra under o
         help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
         default: sync
       role:
-        help: Role of the repository. Can be infra, deploy or code
-        default: "{{ (index .Forjfile.Repos .Current.Name).Role }}"
+        help: Role of the repository. Forjj will set it to 'infra', 'deploy' or 'code'
   webhooks:
     identified_by_flag: name
     flags:
