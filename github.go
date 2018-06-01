@@ -374,7 +374,7 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 	// loop on list of repos, and ensure they exist with minimal config and rights
 	for name, repo_data := range g.githubDeploy.Repos {
 		organization := g.githubDeploy.Organization
-		if repo_data.Role != "code" {
+		if repo_data.Role == "infra" {
 			organization = g.githubDeploy.ProdOrganization
 		}
 		if found_repo, _, e := c.Get(g.ctxt, organization, name); e == nil {
