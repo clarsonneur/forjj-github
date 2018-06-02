@@ -397,7 +397,7 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 			Exist:         repo_data.exist,
 			Remotes:       repo_data.remotes,
 			BranchConnect: repo_data.branchConnect,
-			Owner:         g.githubDeploy.Organization,
+			Owner:         organization,
 		}
 	}
 	return
