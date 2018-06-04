@@ -34,7 +34,7 @@ func (g *GitHubStruct) update_yaml_data(req *UpdateReq, ret *goforjj.PluginData)
 				continue
 			}
 
-			g.SetRepo(&repo, (name == g.app.ForjjInfra))
+			g.SetRepo(&repo, (name == g.app.ForjjInfra), repo.Deployable == "true")
 			g.SetHooks(&repo, req.Objects.Webhooks)
 		}
 
@@ -82,7 +82,7 @@ func (g *GitHubStruct) update_yaml_data(req *UpdateReq, ret *goforjj.PluginData)
 }
 
 // SetRepo Add a new repository to be managed by github plugin.
-func (g *GitHubStruct) SetRepo(repo *RepoInstanceStruct, isInfra bool) {
+func (g *GitHubStruct) SetRepo(repo *RepoInstanceStruct, isInfra, isDeployable bool) {
 	upstream := g.DefineRepoUrls(repo.Name)
 
 	owner := g.githubDeploy.Organization
@@ -95,7 +95,7 @@ func (g *GitHubStruct) SetRepo(repo *RepoInstanceStruct, isInfra bool) {
 	r.set(repo,
 		map[string]goforjj.PluginRepoRemoteUrl{"origin": upstream},
 		map[string]string{"master": "origin/master"},
-		isInfra, owner)
+		isInfra, isDeployable, owner)
 	g.githubDeploy.Repos[repo.Name] = r
 
 }

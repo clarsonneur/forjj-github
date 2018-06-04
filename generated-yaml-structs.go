@@ -48,12 +48,13 @@ type GroupInstanceStruct struct {
 // Object Instance structures
 
 type RepoInstanceStruct struct {
+	Deployable string `json:"Deployable"` // true if the repo is identified by forjj as deployable in the current deployment context
 	Flow string `json:"flow"` // Flow activated on this repository
 	ForjjWorkspaceMount string `json:"forjj-workspace-mount"` // Where the workspace dir is located in the github plugin container.
 	Groups string `json:"groups"` // List of groups to attach to the repository, separated by comma.
 	Issue_tracker string `json:"issue_tracker"` // To activate the Issue tracker to the Repository
 	Name string `json:"name"` // Repository name
-	Role string `json:"role"` // Role of the repository. Can be infra, deploy or code
+	Role string `json:"role"` // Role of the repository. Forjj will set it to 'infra', 'deploy' or 'code'
 	Title string `json:"title"` // Github Repository title
 	Users string `json:"users"` // List of users to attach to the repository, separated by comma.
 	WebhooksManagement string `json:"webhooks-management"` // Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.
@@ -240,7 +241,7 @@ const YamlDesc = "---\n" +
    "        default: sync\n" +
    "      pro-deployment:\n" +
    "        help: true if current deployment is production one\n" +
-   "        default: \"{{ if (eq (.Deployments.GetFromName .Current.Deployment).Type \\\"PRO\\\") }}true{{ else }}false{{ end }}\"\n" +
+   "        default: \"{{ if (eq (.Deployments.Get .Current.Deployment).Type \\\"PRO\\\") }}true{{ else }}false{{ end }}\"\n" +
    "  # Define github group exposure to forjj\n" +
    "  group: # New object type in forjj\n" +
    "    # Default is : actions: [\"add\", \"change\", \"remove\", \"list\", \"rename\"]\n" +
@@ -297,8 +298,11 @@ const YamlDesc = "---\n" +
    "        help: Set 'sync' to manage all repository webhooks. set 'manage' to manage only listed.\n" +
    "        default: sync\n" +
    "      role:\n" +
-   "        help: Role of the repository. Can be infra, deploy or code\n" +
-   "        default: \"{{ (index .Forjfile.Repos .Current.Name).Role }}\"\n" +
+   "        help: Role of the repository. Forjj will set it to 'infra', 'deploy' or 'code'\n" +
+   "      Deployable:\n" +
+   "        internal: true\n" +
+   "        help: true if the repo is identified by forjj as deployable in the current deployment context\n" +
+   "        default: \"{{ if (index .Forjfile.Repos .Current.Name).IsDeployable }}true{{ end }}\"\n" +
    "  webhooks:\n" +
    "    identified_by_flag: name\n" +
    "    flags:\n" +

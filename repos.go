@@ -26,13 +26,14 @@ type RepositoryStruct struct { // Used to stored the yaml source file. Not used 
 	WebHookPolicy string                                 `yaml:",omitempty"` // 'sync' or 'manage'. An
 	Role          string                                 `yaml:",omitempty"` // Repository Role given by Forjj
 	Owner         string                                 `yaml:",omitempty"` // Repository Owner. All owner by current deployment, except infra owned by pro deployment.
+	IsDeployable  bool
 }
 
 func (r *RepositoryStruct) set(
 	repo *RepoInstanceStruct,
 	remotes map[string]goforjj.PluginRepoRemoteUrl,
 	branchConnect map[string]string,
-	is_infra bool, owner string,
+	is_infra, isDeployable bool, owner string,
 ) *RepositoryStruct {
 	if r == nil {
 		r = new(RepositoryStruct)
@@ -66,6 +67,7 @@ func (r *RepositoryStruct) set(
 	}
 	r.Role = repo.Role
 	r.Owner = owner
+	r.IsDeployable = isDeployable
 	return r
 }
 

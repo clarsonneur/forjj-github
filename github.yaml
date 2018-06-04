@@ -124,6 +124,10 @@ objects: # All objects will be delivered by forjj except workspace/infra under o
         default: sync
       role:
         help: Role of the repository. Forjj will set it to 'infra', 'deploy' or 'code'
+      Deployable:
+        internal: true
+        help: true if the repo is identified by forjj as deployable in the current deployment context
+        default: "{{ if (index .Forjfile.Repos .Current.Name).IsDeployable }}true{{ end }}"
   webhooks:
     identified_by_flag: name
     flags:
