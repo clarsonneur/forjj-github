@@ -286,7 +286,7 @@ func DoMaintain(w http.ResponseWriter, r *http.Request, req *MaintainReq, ret *g
 			log.Printf(ret.StatusAdd("Repo ignored: %s", name))
 			continue
 		}
-		if repo_data.Role == "infra" && gws.githubDeploy.ProdOrganization != gws.githubDeploy.ProdOrganization {
+		if repo_data.Role == "infra" && repo_data.Owner != gws.githubDeploy.ProdOrganization {
 			log.Printf(ret.StatusAdd("Repo ignored: %s - Infra repo owned by '%s'", name, gws.githubDeploy.ProdOrganization))
 			continue
 		}
