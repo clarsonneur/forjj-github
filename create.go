@@ -37,7 +37,7 @@ func (g *GitHubStruct) create_yaml_data(req *CreateReq, ret *goforjj.PluginData)
 			ret.StatusAdd("Warning!!! Invalid repository '%s' requested. Ignored.")
 			continue
 		}
-		g.SetRepo(&repo, is_infra)
+		g.SetRepo(&repo, is_infra, repo.Deployable == "true")
 		g.SetHooks(&repo, req.Objects.Webhooks)
 	}
 
