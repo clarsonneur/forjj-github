@@ -82,15 +82,20 @@ func (g *GitHubStruct) update_yaml_data(req *UpdateReq, ret *goforjj.PluginData)
 }
 
 // SetRepo Add a new repository to be managed by github plugin.
-func (g *GitHubStruct) SetRepo(repo *RepoInstanceStruct, is_infra bool) {
+func (g *GitHubStruct) SetRepo(repo *RepoInstanceStruct, isInfra bool) {
 	upstream := g.DefineRepoUrls(repo.Name)
+
+	owner := g.githubDeploy.Organization
+	if isInfra {
+		owner = g.githubDeploy.ProdOrganization
+	}
 
 	// found or not, I need to set it.
 	r := RepositoryStruct{}
 	r.set(repo,
 		map[string]goforjj.PluginRepoRemoteUrl{"origin": upstream},
 		map[string]string{"master": "origin/master"},
-		is_infra)
+		isInfra, owner)
 	g.githubDeploy.Repos[repo.Name] = r
 
 }

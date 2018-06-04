@@ -373,11 +373,7 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 
 	// loop on list of repos, and ensure they exist with minimal config and rights
 	for name, repo_data := range g.githubDeploy.Repos {
-		organization := g.githubDeploy.Organization
-		if repo_data.Role == "infra" {
-			organization = g.githubDeploy.ProdOrganization
-		}
-		if found_repo, _, e := c.Get(g.ctxt, organization, name); e == nil {
+		if found_repo, _, e := c.Get(g.ctxt, repo_data.Owner, name); e == nil {
 			if err == nil && name == g.app.ForjjInfra { // Infra repository.
 				err = fmt.Errorf("Infra repository '%s' already exist in github server.", name)
 			}
@@ -397,7 +393,7 @@ func (g *GitHubStruct) repos_exists(ret *goforjj.PluginData) (err error) {
 			Exist:         repo_data.exist,
 			Remotes:       repo_data.remotes,
 			BranchConnect: repo_data.branchConnect,
-			Owner:         organization,
+			Owner:         repo_data.Owner,
 		}
 	}
 	return
